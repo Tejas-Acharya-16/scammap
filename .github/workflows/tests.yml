@@ -1,0 +1,38 @@
+# Runs the whole test suite on every push (any branch) and every pull request.
+# Same command the team runs before each commit: python -m pytest tests -q
+# (expected: everything passes, plus the 2 known-limit xfails).
+name: tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # The Playwright report-flow test (tests/e2e) must run here: a missing browser fails, not skips.
+      E2E_REQUIRED: "1"
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"  # same as the Dockerfile
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Install Chromium for Playwright
+        run: python -m playwright install --with-deps chromium
+
+      - name: Run tests
+        run: python -m pytest tests -q
