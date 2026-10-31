@@ -43,15 +43,22 @@ or earlier hackathons.
 - The reference tables in `app/data` (areas, the verified list, scam types, channels) come from the data
   tables in the organisers' brief and are used as data files, as the event rules allow. The shops in the
   verified list are the organisers' made-up test businesses.
+- The message reader's training data, `tools/ai/messages.jsonl` (591 messages), and its 10 held-out test messages
+  (`tests/unit/data/ai_heldout.jsonl`) were written by Claude Code during the event. They are synthetic: `+91 90000`
+  numbers, `.example` links, made-up UPI IDs, banks and shops. No real message and no third-party dataset.
+  The model is trained by our own code (`tools/ai/train_reader.py`, standard library only). No pre-trained model,
+  and no library in the browser: `app/static/ai/reader.js` is written for this project.
 
 ## AI tools
 
 They helped us write code, tests and documents. None of them runs inside the product: every verdict comes
-from deterministic code, and no model is called while the server answers a request.
+from deterministic code, and no model is called while the server answers a request. The product has one model
+of its own, the on-device message reader (see Data): it runs in the browser, only suggests a kind of scam,
+and never sets a verdict.
 
 | Tool | What it helped with |
 |---|---|
 | Claude (claude.ai chat, Anthropic) | Planning, the trust engine and its tests (`app/engine`, `tests/engine`), the judge console sandbox, reviews, the security review |
-| Claude Code (Anthropic) | Server, licence, deployment, CI, web app changes, Playwright tests |
+| Claude Code (Anthropic) | Server, licence, deployment, CI, web app changes, Playwright tests, the on-device message reader and its synthetic messages |
 | Google Antigravity (with the Claude and Gemini models it offers) | README, Docker files, the demo seed script, the video script |
 | OpenAI Codex | Black-box tests: live attack table, live lookup and privacy checks, input variants |

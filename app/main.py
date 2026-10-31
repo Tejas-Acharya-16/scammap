@@ -174,6 +174,7 @@ REGISTRY = Registry.from_dir(Path(__file__).parent / "data")
 INDEX_HTML = Path(__file__).parent / "static" / "index.html"
 JUDGE_HTML = Path(__file__).parent / "static" / "judge.html"
 THEME_CSS = Path(__file__).parent / "static" / "theme.css"   # the shared look of / and /judge
+AI_DIR = Path(__file__).parent / "static" / "ai"           # on-device message reader (runs in the browser only)
 PAGES = frozenset({"/", "/judge"})  # served on GET only; exempt from the licence gate
 
 # Which deploy is answering (headers on /health)
@@ -488,6 +489,17 @@ def judge():
 def theme_css():
     # One stylesheet for both pages. Under /static, so it loads while the licence is expired too.
     return FileResponse(THEME_CSS, media_type="text/css")
+
+
+@app.get(STATIC_PREFIX + "/ai/reader.js")
+def ai_reader_js():
+    # The on-device message reader. It runs in the browser; no message text ever reaches this server.
+    return FileResponse(AI_DIR / "reader.js", media_type="application/javascript")
+
+
+@app.get(STATIC_PREFIX + "/ai/reader_model.json")
+def ai_reader_model():
+    return FileResponse(AI_DIR / "reader_model.json", media_type="application/json")
 
 
 @app.get("/health")
