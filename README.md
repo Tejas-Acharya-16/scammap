@@ -365,11 +365,14 @@ All results below are from our own synthetic data and generators. They are not f
 # Engine tests (283 passed, 2 known limits)
 python -m pytest tests/engine -q
 
-# Everything except the browser tests (336 passed, 2 known limits)
+# Everything except the browser tests (373 passed, 2 known limits)
 python -m pytest tests -q --ignore=tests/e2e
 
-# Browser tests, phone and laptop size (TBD passed; first run: python -m playwright install chromium)
+# Browser tests, phone and laptop size (38 passed; first run: python -m playwright install chromium)
 python -m pytest tests/e2e -q
+
+# Paste-anything: the extractor and a phone flow (Node 22, uses the Python Playwright above; 3 passed)
+PYTHON=python node --test tests/extract.test.cjs tests/e2e/paste-anything.test.cjs
 
 # In-process attack table (60 seeds, ~20 seconds)
 python -m tests.engine.scenarios --seeds 60 --compare

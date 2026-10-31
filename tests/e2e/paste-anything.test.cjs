@@ -73,6 +73,8 @@ with sync_playwright() as p:
     assert check_verdict == 'No reports', check_verdict
 
     page.goto(${JSON.stringify(url)} + '/')
+    # the on-device AI reader loads its model at page load; it may pre-select the kind (at 0.7 or more)
+    page.wait_for_function("() => window.ScamMapReader && window.ScamMapReader.ready()", timeout=10000)
     sent = []
     page.on('request', lambda request: sent.append(request.post_data_json)
             if request.method == 'POST' and request.url.endswith('/reports') else None)
@@ -80,7 +82,10 @@ with sync_playwright() as p:
     paste(page, '#rv', message)
     assert page.input_value('#rv') == '+91 90000 25002'
     assert page.locator('#channels .tile.on').get_attribute('data-ch') == 'SMS or WhatsApp'
-    assert page.locator('#kinds .tile.on').get_attribute('data-kind') == 'digital-arrest'
+    page.locator('#air:not(.hidden)').wait_for(timeout=10000)
+    # The keyword rule alone says digital-arrest ("parcel"); the AI reader is 70%+ sure it is courier-customs,
+    # and an AI reading at 0.7 or more wins over the keyword rule (team decision, 1 Nov).
+    assert page.locator('#kinds .tile.on').get_attribute('data-kind') == 'courier-customs'
     choices = page.locator('#rfoundchips button')
     assert choices.count() == 2
     choices.nth(1).tap()
@@ -92,7 +97,7 @@ with sync_playwright() as p:
     assert body['identifier_type'] == 'url', body
     assert body['identifier_value'] == 'https://parcel.example/track', body
     assert body['channel'] == 'SMS or WhatsApp', body
-    assert body['scam_type'] == 'digital-arrest', body
+    assert body['scam_type'] == 'courier-customs', body
     assert body['note'] == '', body
     browser.close()
     print(json.dumps({'check_verdict': check_verdict, 'report_actions': 3, 'note_empty': True}))
