@@ -1,0 +1,4 @@
+# Test-only tools. Not installed in the Docker image.
+# The Playwright version must match its browser build: after installing, run
+#   python -m playwright install chromium
+playwright==1.63.0
