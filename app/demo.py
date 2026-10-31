@@ -58,12 +58,14 @@ class Sandbox:
         return "10.%d.%d" % (self.rng.randint(0, 255), self.rng.randint(0, 255))
 
     # --- API calls on the sandbox engine
-    def report(self, value, ago, pin, note=None, rid=None, net=None, typ="digital-arrest", itype="phone"):
+    def report(self, value, ago, pin, note=None, rid=None, net=None, typ="digital-arrest", itype="phone",
+               filed_ago=None):
         occurred = self.now - ago
+        filed = self.now - filed_ago if filed_ago is not None else min(occurred + self.rng.randint(2, 40) * M, self.now)
         body = {
             "report_id": "rep_demo_%010x" % self.rng.getrandbits(40),
             "occurred_at": occurred.isoformat(timespec="seconds"),
-            "reported_at": min(occurred + self.rng.randint(2, 40) * M, self.now).isoformat(timespec="seconds"),
+            "reported_at": filed.isoformat(timespec="seconds"),
             "reporter_id": rid or self.rid(), "ip_prefix": net or self.net(),
             "channel": "Phone call", "scam_type": typ, "identifier_type": itype,
             "identifier_value": value, "pincode": pin,
@@ -338,6 +340,58 @@ def _bonus(registry, config, rng, now):
     return out
 
 
+# ============================================================================ AI watchdog
+def _ai_watchdog(registry, config, rng, now):
+    """The AI campaign watchdog on a fresh sandbox: it explains rings, stays quiet on real waves,
+    flags a trick the rules let through, and never changes a verdict."""
+    out = []
+    sb = Sandbox(registry, config, rng, now)
+    if sb.engine.watchdog is None:
+        return [_check("AI0", "AI watchdog model loaded", "app/data/watchdog_model.json", "a model", None, False)]
+    home = rng.choice(sb.pins[:10])
+
+    def case(cid, title, how, make, want_high):
+        n = sb.number()
+        make(n)
+        _, r = sb.look(n)
+        wd = r.get("ai_watchdog") or {}
+        got = {"verdict": r["verdict"], "ai_watchdog": {k: wd.get(k) for k in ("coordinated", "level", "signals")}}
+        ok = (wd.get("level") == "high") if want_high else (wd.get("level") == "low")
+        want = "AI: high, with reasons" if want_high else "AI: low, with reasons"
+        out.append(_check(cid, title, how, want, got, ok and bool(wd.get("signals"))))
+        return n
+
+    numbers = [
+        case("AI1", "Explains a ring on one Wi-Fi", "22 new accounts, one network, own words, within 3 hours",
+             lambda n, w=sb.net(): [sb.report(n, sb.within(3), home, net=w) for _ in range(22)], True),
+        case("AI2", "Explains a ring that pastes one message", "40 new accounts, 40 networks, one shared text, within one hour",
+             lambda n, t=sb.words(): [sb.report(n, sb.within(1), home, note=t) for _ in range(40)], True),
+        case("AI3", "Flags a trick the rules let through: backdating",
+             "12 new accounts, 12 networks, own words; they say the calls came over 5 days, "
+             "but all 12 reports are filed within one hour",
+             lambda n: [sb.report(n, rng.uniform(0.5, 5) * D, rng.choice(sb.pins[:12]),
+                                  filed_ago=rng.uniform(0.05, 1) * H) for _ in range(12)], True),
+        case("AI4", "Stays quiet on a real wave", "12 new people, 2 per area in 6 areas, within 3 hours",
+             lambda n: [sb.report(n, sb.within(3), p) for p in rng.sample(sb.pins[:12], 6) for _ in range(2)], False),
+        case("AI5", "Stays quiet on real reports over days", "8 new people, own words, over 10 days, 3 areas",
+             lambda n, ps=rng.sample(sb.pins[:12], 3): [sb.report(n, rng.uniform(0.5, 10) * D, rng.choice(ps))
+                                                       for _ in range(8)], False),
+    ]
+    # The same lookups with the watchdog switched off: every field but ai_watchdog must match.
+    with_ai = [sb.look(n)[1] for n in numbers]
+    model, sb.engine.watchdog = sb.engine.watchdog, None
+    without = [sb.look(n)[1] for n in numbers]
+    sb.engine.watchdog = model
+    same = all({k: v for k, v in a.items() if k != "ai_watchdog"} == {k: v for k, v in b.items() if k != "ai_watchdog"}
+               for a, b in zip(with_ai, without))
+    out.append(_check("AI6", "The AI never changes a verdict",
+                      "the 5 lookups above again with the watchdog switched off",
+                      "identical answers apart from the ai_watchdog field",
+                      {"verdicts_with_ai": [a["verdict"] for a in with_ai],
+                       "verdicts_without_ai": [b["verdict"] for b in without]}, same))
+    return out
+
+
 # ============================================================================ entry point
 def run(registry, config, seed=None, now=None) -> dict:
     seed = int(seed) if seed not in (None, "") else random.randrange(10 ** 6)
@@ -354,6 +408,8 @@ def run(registry, config, seed=None, now=None) -> dict:
         {"row": 4, "title": "Privacy", "checks": _privacy(sb)},
         {"row": "bonus", "title": "Bonus: verified list, disputes, no alerts from fakes",
          "checks": _bonus(registry, config, rng, now)},
+        {"row": "AI", "title": "AI watchdog: a second opinion that never decides",
+         "checks": _ai_watchdog(registry, config, rng, now)},
     ]
     passed = sum(c["ok"] for s in sections for c in s["checks"])
     total = sum(len(s["checks"]) for s in sections)
