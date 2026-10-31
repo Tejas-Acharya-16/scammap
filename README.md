@@ -52,7 +52,7 @@ Or with Docker (app + Postgres):
 
 ```bash
 docker compose up --build
-# Server at http://localhost:8080 (docker-compose.yml maps port 8080 to the app)
+# Server at http://localhost:8000 (docker-compose.yml maps port 8000 to the app)
 ```
 
 ---
@@ -125,7 +125,7 @@ The server runs under a signed licence. An Ed25519 public key is built into the 
 - Data is never deleted on expiry. Uploading a valid licence restores full service instantly.
 - The web app polls `/license` every 10 seconds. When the licence expires, it shows "Licence expired. Contact your provider." When a valid licence is uploaded, the app recovers by itself.
 
-**Licence demo, no private key needed.** Run it from the repository folder. Set `URL` to `http://127.0.0.1:8000` locally, `http://localhost:8080` with Docker, or the live address. `licenses/expired.json` is a correctly signed licence whose date has passed; `licenses/long.json` runs to 31 Jan 2027.
+**Licence demo, no private key needed.** Run it from the repository folder. Set `URL` to `http://127.0.0.1:8000` locally, `http://localhost:8000` with Docker, or the live address. `licenses/expired.json` is a correctly signed licence whose date has passed; `licenses/long.json` runs to 31 Jan 2027.
 
 ```bash
 URL=http://127.0.0.1:8000
