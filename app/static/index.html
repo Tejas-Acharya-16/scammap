@@ -292,9 +292,10 @@ function aiReset(){aiText.r="";kindTouched=false;clearTimeout(aiTimer);$("air").
 function aiSoon(){clearTimeout(aiTimer);aiTimer=setTimeout(()=>aiShow("r"),250)}
 const pasted=e=>(e.clipboardData&&e.clipboardData.getData("text/plain"))||"";
 $("q").addEventListener("input",()=>{aiText.q=$("q").value;$("aiq").className="ai hidden"});
-$("q").addEventListener("paste",e=>{const s=pasted(e);if(s)aiText.q=s});
+// capture: the pasted text is read before any other paste handler runs (one may replace it with the number it finds)
+$("q").addEventListener("paste",e=>{const s=pasted(e);if(s)aiText.q=s},true);
 $("rv").addEventListener("input",()=>{aiText.r=$("rv").value;aiSoon()});
-$("rv").addEventListener("paste",e=>{const s=pasted(e);if(s){aiText.r=s;setTimeout(()=>aiShow("r"),0)}});
+$("rv").addEventListener("paste",e=>{const s=pasted(e);if(s){aiText.r=s;setTimeout(()=>aiShow("r"),0)}},true);   // shown after the other handlers
 $("note").addEventListener("input",aiSoon);
 ["l-en","l-hi"].forEach(id=>$(id).addEventListener("click",aiRefresh));
 if(window.ScamMapReader)ScamMapReader.load().then(ok=>{if(ok)aiRefresh()});
