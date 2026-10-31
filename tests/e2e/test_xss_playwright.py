@@ -66,14 +66,13 @@ def test_the_page_escapes_every_lookup_field_on_its_own(live_server, page):
         page.route("**/lookup**", answer_with(hostile, verdict))
         page.fill("#q", "9000011112")
         page.click("#go")
-        page.wait_for_function("document.querySelector('#result .verdict') && "
-                               "document.querySelector('#result .verdict').className.includes('v-%s')" % verdict)
+        page.wait_for_selector(f"#result .verdict.v-{verdict}")      # locators, not eval: the CSP forbids eval
         assert_nothing_ran(page, "#result")
     page.unroute("**/lookup**")
     page.route("**/lookup**", lambda route: fulfil(route, {**hostile, "verdict": "VERIFIED_BUSINESS"}))
     page.fill("#q", "9000011113")
     page.click("#go")
-    page.wait_for_function("document.querySelector('#result').innerText.includes('<img')")
+    page.wait_for_selector("#result:has-text('<img src=x')")
     assert PAYLOAD in page.inner_text("#result")                 # the label, literally
 
 
