@@ -1,0 +1,49 @@
+Community Scam Map in-process input-variant probe
+Timestamp: 2026-10-31T23:57:42+05:30 IST
+Target: app.main:app via FastAPI TestClient
+Environment: synthetic TRUST_SALT, temporary SQLite database, ALLOW_RESET=0.
+No /admin/reset call was made. All report inputs are synthetic test data.
+Response bodies are recorded; private test input is redacted if a response echoes it.
+The defanged URL uses .example to comply with the synthetic-data rule.
+Each variant changes one named field from a valid baseline for that identifier type; report_id is unique per request.
+
+TestClient health response had no Date header; used the app clock for timestamps.
+BASELINE valid report | expectation=accept | HTTP 201 | body={"case_id":"case_b038d550b2","merged":false,"report_id":"input-variant-a8ff33fb782e-baseline"}
+occurred_at: UTC Z | expectation=accept | HTTP 201 | body={"case_id":"case_b038d550b2","merged":true,"report_id":"input-variant-a8ff33fb782e-01"}
+occurred_at: +05:30 | expectation=accept | HTTP 201 | body={"case_id":"case_b038d550b2","merged":true,"report_id":"input-variant-a8ff33fb782e-02"}
+occurred_at: +0530 | expectation=accept | HTTP 201 | body={"case_id":"case_b038d550b2","merged":true,"report_id":"input-variant-a8ff33fb782e-03"}
+occurred_at: no timezone | expectation=accept | HTTP 201 | body={"case_id":"case_b038d550b2","merged":true,"report_id":"input-variant-a8ff33fb782e-04"}
+occurred_at: space instead of T | expectation=accept | HTTP 201 | body={"case_id":"case_b038d550b2","merged":true,"report_id":"input-variant-a8ff33fb782e-05"}
+occurred_at: milliseconds | expectation=accept | HTTP 201 | body={"case_id":"case_b038d550b2","merged":true,"report_id":"input-variant-a8ff33fb782e-06"}
+occurred_at: date only | expectation=may reject | HTTP 201 | body={"case_id":"case_b038d550b2","merged":true,"report_id":"input-variant-a8ff33fb782e-07"}
+  Accepted despite conservative expectation: A report occurrence needs a time; date-only has no time or offset.
+phone: +91 with spaces | expectation=accept | HTTP 201 | body={"case_id":"case_292c066fd4","merged":false,"report_id":"input-variant-a8ff33fb782e-08"}
+phone: leading zero | expectation=accept | HTTP 201 | body={"case_id":"case_292c066fd4","merged":true,"report_id":"input-variant-a8ff33fb782e-09"}
+phone: digits only | expectation=accept | HTTP 201 | body={"case_id":"case_292c066fd4","merged":true,"report_id":"input-variant-a8ff33fb782e-10"}
+phone: brackets and dashes | expectation=accept | HTTP 201 | body={"case_id":"case_292c066fd4","merged":true,"report_id":"input-variant-a8ff33fb782e-11"}
+phone: country code without plus | expectation=accept | HTTP 201 | body={"case_id":"case_292c066fd4","merged":true,"report_id":"input-variant-a8ff33fb782e-12"}
+phone: Bengaluru landline | expectation=accept | HTTP 201 | body={"case_id":"case_fbae7379ef","merged":false,"report_id":"input-variant-a8ff33fb782e-13"}
+phone: toll-free | expectation=accept | HTTP 201 | body={"case_id":"case_df6a056506","merged":false,"report_id":"input-variant-a8ff33fb782e-14"}
+upi: upper case | expectation=accept | HTTP 201 | body={"case_id":"case_b98081795d","merged":false,"report_id":"input-variant-a8ff33fb782e-15"}
+upi: dotted handle | expectation=accept | HTTP 201 | body={"case_id":"case_ac1c5c0bef","merged":false,"report_id":"input-variant-a8ff33fb782e-16"}
+upi: payment URI | expectation=accept | HTTP 201 | body={"case_id":"case_da62a6943c","merged":false,"report_id":"input-variant-a8ff33fb782e-17"}
+url: http scheme | expectation=accept | HTTP 201 | body={"case_id":"case_16c60180e6","merged":false,"report_id":"input-variant-a8ff33fb782e-18"}
+url: www without scheme | expectation=accept | HTTP 201 | body={"case_id":"case_16c60180e6","merged":true,"report_id":"input-variant-a8ff33fb782e-19"}
+url: defanged hxxps | expectation=accept | HTTP 201 | body={"case_id":"case_58131dd7b5","merged":false,"report_id":"input-variant-a8ff33fb782e-20"}
+sender_id: VM prefix | expectation=accept | HTTP 201 | body={"case_id":"case_28d5bf324a","merged":false,"report_id":"input-variant-a8ff33fb782e-21"}
+sender_id: AD prefix and suffix | expectation=accept | HTTP 201 | body={"case_id":"case_28d5bf324a","merged":true,"report_id":"input-variant-a8ff33fb782e-22"}
+sender_id: lower case | expectation=accept | HTTP 201 | body={"case_id":"case_28d5bf324a","merged":true,"report_id":"input-variant-a8ff33fb782e-23"}
+pincode: JSON number | expectation=accept | HTTP 201 | body={"case_id":"case_b038d550b2","merged":true,"report_id":"input-variant-a8ff33fb782e-24"}
+identifier_type: upper case | expectation=accept | HTTP 201 | body={"case_id":"case_b038d550b2","merged":true,"report_id":"input-variant-a8ff33fb782e-25"}
+channel: unknown value | expectation=accept | HTTP 201 | body={"case_id":"case_b038d550b2","merged":true,"report_id":"input-variant-a8ff33fb782e-26"}
+scam_type: unknown value | expectation=accept | HTTP 201 | body={"case_id":"case_b038d550b2","merged":true,"report_id":"input-variant-a8ff33fb782e-27"}
+extra unknown field | expectation=accept | HTTP 201 | body={"case_id":"case_b038d550b2","merged":true,"report_id":"input-variant-a8ff33fb782e-28"}
+missing reported_at | expectation=accept | HTTP 201 | body={"case_id":"case_b038d550b2","merged":true,"report_id":"input-variant-a8ff33fb782e-29"}
+missing note | expectation=accept | HTTP 201 | body={"case_id":"case_b038d550b2","merged":true,"report_id":"input-variant-a8ff33fb782e-30"}
+missing reporter_id | expectation=accept | HTTP 201 | body={"case_id":"case_b038d550b2","merged":true,"report_id":"input-variant-a8ff33fb782e-31"}
+
+400 responses judged acceptable:
+- None.
+Date-only occurred_at is not in the acceptable-400 list; it lacks a time and offset.
+
+Overall: REVIEW
