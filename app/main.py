@@ -18,7 +18,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import BigInteger, Boolean, Column, Integer, MetaData, Table, Text, create_engine, select, delete
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -168,6 +168,7 @@ MAX_BODY_BYTES = 64 * 1024  # 64 KiB request body limit
 
 
 REGISTRY = Registry.from_dir(Path(__file__).parent / "data")
+INDEX_HTML = Path(__file__).parent / "static" / "index.html"
 
 # Engine needs TRUST_SALT; fail fast if missing (unless testing with a default).
 if not TRUST_SALT:
@@ -290,8 +291,9 @@ class LicenseGateMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
-        # Exempt: /health, /license (GET and POST), static files
-        if path in EXEMPT_PATHS or path.startswith(STATIC_PREFIX + "/"):
+        # Exempt: /health, /license (GET and POST), the app page (GET / only), static files
+        if (path in EXEMPT_PATHS or path.startswith(STATIC_PREFIX + "/")
+                or (path == "/" and request.method == "GET")):
             return await call_next(request)
 
         now = clock.now()
@@ -333,6 +335,12 @@ async def method_not_allowed_handler(request: Request, exc):
 
 
 # ── routes ───────────────────────────────────────────────────────────────────
+
+@app.get("/")
+def index():
+    # The web app. Exempt from the licence gate so it can show the expired screen.
+    return FileResponse(INDEX_HTML, media_type="text/html")
+
 
 @app.get("/health")
 def health():

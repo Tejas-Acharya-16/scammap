@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Community Scam Map</title>
+<style>
+:root{--ink:#0B1F3A;--muted:#5B6B80;--line:#D6DEE8;--bg:#F5F7FA;--card:#fff;--green:#1E8E5A;--warn:#D9534F;--amber:#B7791F;--gray:#6B7C93}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans","Noto Sans Devanagari","Nirmala UI",sans-serif;background:var(--bg);color:var(--ink);font-size:16px}
+header{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line);padding:10px 16px;display:flex;align-items:center;justify-content:space-between}
+header b{font-size:18px}
+.lang button{border:1px solid var(--line);background:#fff;padding:6px 10px;border-radius:16px;font-size:14px;color:var(--ink)}
+.lang button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+nav{display:flex;gap:6px;padding:10px 16px;background:#fff;border-bottom:1px solid var(--line)}
+nav button{flex:1;padding:10px 4px;border:1px solid var(--line);background:#fff;border-radius:10px;font-size:15px;font-weight:600;color:var(--ink)}
+nav button.on{background:var(--green);border-color:var(--green);color:#fff}
+main{max-width:480px;margin:0 auto;padding:14px 16px 40px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+label{display:block;font-weight:600;margin:12px 0 6px;font-size:15px}
+input,select,textarea{width:100%;font-size:16px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+textarea{min-height:70px;resize:vertical}
+.row{display:flex;gap:8px}
+.btn{display:block;width:100%;margin-top:14px;padding:13px;border:0;border-radius:12px;background:var(--green);color:#fff;font-size:17px;font-weight:700}
+.btn.alt{background:#fff;color:var(--ink);border:1px solid var(--ink)}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tile{border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px 4px;text-align:center;font-size:13px;line-height:1.2;color:var(--ink)}
+.tile i{display:block;font-style:normal;font-size:24px;margin-bottom:4px}
+.tile.on{border:2px solid var(--green);background:#EAF6EF}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:16px;padding:7px 12px;font-size:14px;color:var(--ink)}
+.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.verdict{display:inline-block;padding:6px 12px;border-radius:16px;color:#fff;font-weight:700;font-size:15px}
+.v-KNOWN_SCAM{background:var(--warn)}.v-SUSPICIOUS{background:var(--amber)}.v-NO_REPORTS{background:var(--gray)}.v-VERIFIED_BUSINESS{background:var(--green)}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:17px;margin:8px 0}
+.muted{color:var(--muted);font-size:14px}
+.advice{background:#FFF8E6;border-radius:10px;padding:10px;margin-top:10px;font-size:14px}
+.ok{color:var(--green);font-weight:700}
+.err{color:var(--warn);font-weight:600}
+.hidden{display:none}
+#expired{position:fixed;inset:0;background:#0B1F3A;color:#fff;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px}
+#expired.hidden{display:none}
+#expired b{font-size:22px;margin:10px 0}
+.cluster{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:8px 0}
+.sev{font-size:12px;font-weight:700;padding:3px 8px;border-radius:10px;color:#fff}
+.CRIT{background:var(--warn)}.HIGH{background:var(--amber)}.MED{background:var(--gray)}
+a{color:var(--green)}
+</style>
+</head>
+<body>
+<header><b data-t="title"></b><span class="lang"><button id="l-en" class="on">EN</button> <button id="l-hi">हिन्दी</button></span></header>
+<nav><button data-tab="check" class="on" data-t="tCheck"></button><button data-tab="report" data-t="tReport"></button><button data-tab="area" data-t="tArea"></button></nav>
+<main>
+<section id="check">
+  <div class="card">
+    <label for="q" data-t="qLabel"></label>
+    <input id="q" autocomplete="off" inputmode="text">
+    <div class="chips" id="qtype" style="margin-top:8px"></div>
+    <button class="btn" id="go" data-t="checkBtn"></button>
+  </div>
+  <div id="result"></div>
+</section>
+<section id="report" class="hidden">
+  <div class="card">
+    <label data-t="how"></label><div class="tiles" id="channels"></div>
+    <label for="rv" data-t="what"></label><input id="rv" autocomplete="off">
+    <div class="chips" id="rtype" style="margin-top:8px"></div>
+    <label for="stype" data-t="kind"></label><select id="stype"></select>
+    <label data-t="when"></label><div class="chips" id="when"></div>
+    <label for="parea" data-t="areaL"></label><select id="parea"></select>
+    <label for="note" data-t="note"></label><textarea id="note" maxlength="280"></textarea>
+    <button class="btn" id="post" data-t="postBtn"></button>
+    <p id="rmsg"></p>
+    <p class="muted"><span data-t="anonInfo"></span> <a href="#" id="resetid" data-t="resetId"></a></p>
+  </div>
+</section>
+<section id="area" class="hidden">
+  <div class="card"><label for="aarea" data-t="areaL"></label><select id="aarea"></select></div>
+  <div class="card"><b data-t="alertsH"></b><div id="alerts" class="muted"></div></div>
+  <div class="card"><b data-t="mapH"></b><div id="clusters"></div></div>
+</section>
+</main>
+<div id="expired" class="hidden"><div style="font-size:44px">🔒</div><b>Licence expired. Contact your provider.</b><div>लाइसेंस समाप्त हो गया है। अपने प्रदाता से संपर्क करें।</div></div>
+<script>
+const S={en:{title:"Community Scam Map",tCheck:"Check",tReport:"Report",tArea:"My area",qLabel:"Paste a number, UPI ID, link or SMS sender",checkBtn:"Check",
+how:"How did they reach you?",what:"The number, UPI ID, link or sender",kind:"Kind of scam",when:"When",areaL:"Area",note:"Note (optional, your own words help)",postBtn:"Post report",
+anonInfo:"Anonymous: no name, no phone, no location.",resetId:"Reset my anonymous ID",alertsH:"Alerts",mapH:"Reports near this area, last 7 days",
+thanks:"Thanks. Your report is anonymous.",bad:"That does not look like a valid number, UPI ID, link or sender.",net:"Network problem. Try again.",badArea:"Pick your area.",
+none:"No alerts here.",noClusters:"No reports near this area in the last 7 days.",reportToo:"Report this too",dispute:"Is this your number? Dispute",
+disputeSent:"Dispute received. It is under review.",bizName:"Business name (optional)",bizMail:"Contact email (optional)",send:"Send dispute",
+KNOWN_SCAM:"Known scam",SUSPICIOUS:"Suspicious",NO_REPORTS:"No reports",VERIFIED_BUSINESS:"Verified business",
+sKNOWN:"Reported by {n} people.",sSUSP:"Reported by {n} {p}. Not enough to confirm.",sNONE:"No reports yet. That does not mean it is safe.",sVER:"Verified business: {l}",
+person:"person",people:"people",review:"A business disputed this. Under review.",last:"Last reported",
+spike:"Scam reports here jumped: {c} in 24 hours (usual {b} a day).",newtype:"New kind of scam here: {t}.",
+now:"Just now",today:"Today",yday:"Yesterday",earlier:"Earlier",phone:"Phone",upi:"UPI ID",url:"Link",sender_id:"SMS sender"},
+hi:{title:"स्कैम मैप",tCheck:"जाँचें",tReport:"रिपोर्ट करें",tArea:"मेरा इलाका",qLabel:"नंबर, UPI ID, लिंक या SMS भेजने वाला पेस्ट करें",checkBtn:"जाँचें",
+how:"उन्होंने कैसे संपर्क किया?",what:"नंबर, UPI ID, लिंक या भेजने वाला",kind:"स्कैम का प्रकार",when:"कब",areaL:"इलाका",note:"टिप्पणी (वैकल्पिक)",postBtn:"भेजें",
+anonInfo:"गुमनाम: न नाम, न फ़ोन, न लोकेशन।",resetId:"मेरी गुमनाम ID बदलें",alertsH:"अलर्ट",mapH:"इस इलाके के पास, पिछले 7 दिन",
+thanks:"धन्यवाद। आपकी रिपोर्ट गुमनाम है।",bad:"यह सही नंबर, UPI ID, लिंक या भेजने वाला नहीं लगता।",net:"नेटवर्क समस्या। फिर कोशिश करें।",badArea:"अपना इलाका चुनें।",
+none:"यहाँ कोई अलर्ट नहीं।",noClusters:"पिछले 7 दिनों में यहाँ कोई रिपोर्ट नहीं।",reportToo:"इसे भी रिपोर्ट करें",dispute:"क्या यह आपका नंबर है? आपत्ति करें",
+disputeSent:"आपत्ति मिली। समीक्षा जारी है।",bizName:"व्यवसाय का नाम (वैकल्पिक)",bizMail:"संपर्क ईमेल (वैकल्पिक)",send:"आपत्ति भेजें",
+KNOWN_SCAM:"ज्ञात स्कैम",SUSPICIOUS:"संदिग्ध",NO_REPORTS:"कोई रिपोर्ट नहीं",VERIFIED_BUSINESS:"सत्यापित व्यवसाय",
+sKNOWN:"{n} लोगों ने रिपोर्ट किया।",sSUSP:"{n} लोगों ने रिपोर्ट किया। पुष्टि के लिए काफ़ी नहीं।",sNONE:"अभी कोई रिपोर्ट नहीं। इसका मतलब यह नहीं कि यह सुरक्षित है।",sVER:"सत्यापित व्यवसाय: {l}",
+person:"व्यक्ति",people:"लोग",review:"एक व्यवसाय ने आपत्ति की है। समीक्षा जारी है।",last:"आख़िरी रिपोर्ट",
+spike:"यहाँ स्कैम रिपोर्ट अचानक बढ़ीं: 24 घंटे में {c} (आम तौर पर {b} रोज़)।",newtype:"यहाँ नया स्कैम: {t}।",
+now:"अभी",today:"आज",yday:"कल",earlier:"पहले",phone:"फ़ोन",upi:"UPI ID",url:"लिंक",sender_id:"SMS भेजने वाला"}};
+const CH=[["Phone call","📞","फ़ोन कॉल"],["SMS or WhatsApp","💬","SMS या WhatsApp"],["QR code","🔳","QR कोड"],["Fake website","🌐","नकली वेबसाइट"],["UPI request","₹","UPI अनुरोध"],["Something else","❔","कुछ और"]];
+const TYPES=[["digital-arrest","Digital arrest (fake police)","डिजिटल अरेस्ट (नकली पुलिस)","No officer arrests anyone over a video call. Hang up and call 1930."],
+["fake-kyc-link","Fake KYC link","नकली KYC लिंक","Banks never ask for KYC through SMS links. Open your bank's own app."],
+["upi-refund-qr","UPI refund QR","UPI रिफंड QR","Scanning a QR code only sends money. It never receives it."],
+["investment-group","Investment group","निवेश ग्रुप","Guaranteed big returns in a chat group are a warning sign."],
+["courier-customs","Courier or customs fine","कूरियर या कस्टम जुर्माना","Customs does not collect fines by phone or UPI."],
+["job-offer","Work-from-home job","घर से काम वाली नौकरी","Real jobs never ask you to pay a deposit."],
+["lottery-prize","Lottery or prize","लॉटरी या इनाम","You cannot win a prize you never entered. Never pay a fee."],
+["loan-app-harassment","Loan app threats","लोन ऐप धमकी","Report threatening loan apps at 1930 or cybercrime.gov.in."],
+["electricity-disconnection","Power cut SMS","बिजली कटौती SMS","Power companies do not cut supply by SMS. Call the number on your bill."],
+["fake-customer-care","Fake customer care","नकली कस्टमर केयर","Take customer care numbers only from the official app or website."],
+["otp-call","OTP or card call","OTP या कार्ड कॉल","Never share an OTP or PIN with anyone."],
+["sextortion","Video call blackmail","वीडियो कॉल ब्लैकमेल","Do not pay. Report at cybercrime.gov.in or call 1930."],
+["other","Not sure","पता नहीं","If in doubt, hang up and call 1930."]];
+const AREAS=[["560102","HSR Layout","Bengaluru"],["560038","Indiranagar","Bengaluru"],["560034","Koramangala","Bengaluru"],["560066","Whitefield","Bengaluru"],
+["560076","BTM Layout","Bengaluru"],["560011","Jayanagar","Bengaluru"],["560037","Marathahalli","Bengaluru"],["560103","Bellandur","Bengaluru"],
+["560100","Electronic City","Bengaluru"],["560078","JP Nagar","Bengaluru"],["560003","Malleshwaram","Bengaluru"],["560010","Rajajinagar","Bengaluru"],
+["560024","Hebbal","Bengaluru"],["560064","Yelahanka","Bengaluru"],["560070","Banashankari","Bengaluru"],["400050","Bandra West","Mumbai"],
+["110016","Hauz Khas","Delhi"],["500081","Madhapur","Hyderabad"],["600020","Adyar","Chennai"],["411014","Viman Nagar","Pune"],
+["700091","Salt Lake Sector V","Kolkata"],["380015","Satellite","Ahmedabad"],["302017","Malviya Nagar","Jaipur"],["226010","Gomti Nagar","Lucknow"],["682030","Kakkanad","Kochi"]];
+const $=id=>document.getElementById(id);
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+let lang=store.get("lang")||"en",qType=null,rType=null,channel=CH[0][0],whenSel="now";
+const t=(k,v={})=>(S[lang][k]||S.en[k]||k).replace(/\{(\w)\}/g,(_,x)=>v[x]??"");
+const uuid=()=>(crypto.randomUUID?crypto.randomUUID():"r"+Math.random().toString(16).slice(2)+Date.now().toString(16));
+function rid(){let r=store.get("rid");if(!r){r="r_"+uuid();store.set("rid",r)}return r}
+function detect(v){v=(v||"").trim();if(!v)return null;if(/^upi:\/\//i.test(v)||/^[^\s@]+@[a-z0-9]+$/i.test(v))return"upi";
+ if(/^(https?:|hxxp|www\.)/i.test(v)||/^[a-z0-9-]+(\.[a-z0-9-]+)+(\/.*)?$/i.test(v))return"url";
+ if(/^([a-z]{2}-?)?[a-z0-9]{6}(-[a-z])?$/i.test(v.replace(/\s/g,""))&&/[a-z]{3}/i.test(v))return"sender_id";return"phone"}
+function typeChips(el,cur,set){el.innerHTML="";["phone","upi","url","sender_id"].forEach(k=>{const b=document.createElement("button");b.className="chip"+(k===cur?" on":"");
+ b.textContent=t(k);b.onclick=()=>{set(k);typeChips(el,k,set)};el.appendChild(b)})}
+async function api(path,opt){const r=await fetch(path,opt);let body={};try{body=await r.json()}catch(e){}
+ if(r.status===403&&body.error==="LICENSE_EXPIRED"){showExpired(true)}return{status:r.status,body}}
+function fmtDay(s){if(!s)return"";try{return new Date(s).toLocaleDateString(lang==="hi"?"hi-IN":"en-IN",{day:"numeric",month:"short"})}catch(e){return s.slice(0,10)}}
+function tname(k){const x=TYPES.find(a=>a[0]===k);return x?(lang==="hi"?x[2]:x[1]):k}
+function render(){document.documentElement.lang=lang;document.querySelectorAll("[data-t]").forEach(e=>e.textContent=t(e.dataset.t));
+ $("l-en").className=lang==="en"?"on":"";$("l-hi").className=lang==="hi"?"on":"";
+ $("channels").innerHTML="";CH.forEach(([v,ic,hi])=>{const b=document.createElement("button");b.className="tile"+(v===channel?" on":"");
+  b.innerHTML="<i>"+ic+"</i>"+(lang==="hi"?hi:v);b.onclick=()=>{channel=v;render()};$("channels").appendChild(b)});
+ const st=$("stype").value||"digital-arrest";$("stype").innerHTML=TYPES.map(([k,en,hi])=>`<option value="${k}">${lang==="hi"?hi:en}</option>`).join("");$("stype").value=st;
+ $("when").innerHTML="";["now","today","yday","earlier"].forEach(k=>{const b=document.createElement("button");b.className="chip"+(k===whenSel?" on":"");b.textContent=t(k);
+  b.onclick=()=>{whenSel=k;render()};$("when").appendChild(b)});
+ for(const id of["parea","aarea"]){const cur=$(id).value||store.get("area")||"560102";$(id).innerHTML=AREAS.map(([p,a,c])=>`<option value="${p}">${a}, ${c}</option>`).join("");$(id).value=cur}
+ typeChips($("qtype"),qType,k=>qType=k);typeChips($("rtype"),rType,k=>rType=k)}
+async function check(value,type){const v=(value||"").trim();if(!v)return;const ty=type||detect(v);
+ $("result").innerHTML='<div class="card muted">…</div>';
+ let r;try{r=await api(`/lookup?type=${encodeURIComponent(ty)}&value=${encodeURIComponent(v)}`)}catch(e){$("result").innerHTML=`<div class="card err">${t("net")}</div>`;return}
+ if(r.status===400){$("result").innerHTML=`<div class="card err">${t("bad")}</div>`;return}if(r.status!==200)return;
+ const b=r.body,n=b.distinct_reporters;let sent=b.verdict==="KNOWN_SCAM"?t("sKNOWN",{n}):b.verdict==="SUSPICIOUS"?t("sSUSP",{n,p:n===1?t("person"):t("people")}):b.verdict==="NO_REPORTS"?t("sNONE"):t("sVER",{l:b.label||""});
+ const adv=b.scam_type?(TYPES.find(a=>a[0]===b.scam_type)||TYPES[12])[3]:"";
+ $("result").innerHTML=`<div class="card"><span class="verdict v-${b.verdict}">${t(b.verdict)}</span><div class="mono">${b.display_value}</div><div><b>${sent}</b></div>
+ ${b.challenged?`<div class="muted">${t("review")}</div>`:""}${b.last_seen?`<div class="muted">${t("last")}: ${fmtDay(b.last_seen)}${b.scam_type?" · "+tname(b.scam_type):""}</div>`:""}
+ ${adv&&b.verdict!=="VERIFIED_BUSINESS"?`<div class="advice">${adv}</div>`:""}
+ ${b.verdict!=="VERIFIED_BUSINESS"?`<button class="btn" id="too">${t("reportToo")}</button>`:""}<button class="btn alt" id="disp">${t("dispute")}</button><div id="dform"></div></div>`;
+ const too=$("too");if(too)too.onclick=()=>{$("rv").value=v;rType=ty;tab("report")};
+ $("disp").onclick=()=>{$("dform").innerHTML=`<label>${t("bizName")}</label><input id="bn"><label>${t("bizMail")}</label><input id="bm" type="email"><button class="btn" id="dsend">${t("send")}</button><p id="dmsg"></p>`;
+  $("dsend").onclick=async()=>{const r2=await api("/challenges",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({identifier_type:ty,identifier_value:v,claimant_name:$("bn").value,contact_email:$("bm").value,proof_note:""})});
+   $("dmsg").innerHTML=r2.status===201?`<span class="ok">${t("disputeSent")}</span>`:`<span class="err">${t("bad")}</span>`;if(r2.status===201)setTimeout(()=>check(v,ty),600)}}}
+async function post(){const v=$("rv").value.trim(),ty=rType||detect(v),pin=$("parea").value;if(!v){$("rmsg").innerHTML=`<span class="err">${t("bad")}</span>`;return}
+ store.set("area",pin);const now=new Date(),off={now:0,today:3,yday:24,earlier:72}[whenSel];const occ=new Date(now.getTime()-off*3600e3);
+ const body={report_id:"rep_"+uuid(),occurred_at:occ.toISOString(),reported_at:now.toISOString(),reporter_id:rid(),channel,scam_type:$("stype").value,
+  identifier_type:ty,identifier_value:v,pincode:pin,note:$("note").value.slice(0,280),has_screenshot:false,amount_lost_inr:0};
+ let r;try{r=await api("/reports",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)})}catch(e){$("rmsg").innerHTML=`<span class="err">${t("net")}</span>`;return}
+ if(r.status===201){$("rmsg").innerHTML=`<span class="ok">${t("thanks")}</span>`;$("note").value="";$("q").value=v;qType=ty;setTimeout(()=>{tab("check");check(v,ty)},700)}
+ else if(r.status===400)$("rmsg").innerHTML=`<span class="err">${r.body.error==="invalid_pincode"?t("badArea"):t("bad")}</span>`}
+async function loadArea(){const pin=$("aarea").value;store.set("area",pin);
+ const [m,a]=await Promise.all([api(`/map?pincode=${pin}&days=7&radius_km=5`),api(`/alerts?pincode=${pin}`)]);
+ const name=p=>(AREAS.find(x=>x[0]===p)||[p,p])[1];
+ $("alerts").innerHTML=(a.body.alerts||[]).length?a.body.alerts.map(x=>x.type==="SPIKE"?`<p class="err">${t("spike",{c:x.count,b:x.baseline_per_day})}</p>`:`<p class="err">${t("newtype",{t:tname(x.scam_type)})}</p>`).join(""):t("none");
+ $("clusters").innerHTML=(m.body.clusters||[]).length?m.body.clusters.map(c=>`<div class="cluster"><span>${name(c.pincode)} · ${tname(c.top_scam_type)}</span><span><b>${c.count}</b> <span class="sev ${c.severity}">${c.severity}</span></span></div>`).join(""):`<p class="muted">${t("noClusters")}</p>`}
+function tab(k){document.querySelectorAll("nav button").forEach(b=>b.className=b.dataset.tab===k?"on":"");["check","report","area"].forEach(s=>$(s).className=s===k?"":"hidden");if(k==="area")loadArea()}
+function showExpired(on){$("expired").className=on?"":"hidden"}
+async function licence(){try{const r=await fetch("/license");const b=await r.json();showExpired(!(b.valid===true||b.status==="valid"))}catch(e){}}
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>tab(b.dataset.tab));
+$("l-en").onclick=()=>{lang="en";store.set("lang",lang);render()};$("l-hi").onclick=()=>{lang="hi";store.set("lang",lang);render()};
+$("go").onclick=()=>check($("q").value,qType);$("q").onkeydown=e=>{if(e.key==="Enter")check($("q").value,qType)};$("q").oninput=()=>{qType=detect($("q").value);typeChips($("qtype"),qType,k=>qType=k)};
+$("rv").oninput=()=>{rType=detect($("rv").value);typeChips($("rtype"),rType,k=>rType=k)};$("post").onclick=post;$("aarea").onchange=loadArea;
+$("resetid").onclick=e=>{e.preventDefault();store.set("rid","");rid()};
+render();licence();setInterval(licence,10000);
+</script>
+</body>
+</html>
