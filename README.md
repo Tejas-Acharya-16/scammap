@@ -10,29 +10,44 @@ Judge console: /judge runs every scoring check on a sandbox copy of the engine.
 
 ## Run locally
 
-**Requirements:** Python 3.12+, pip
+**Requirements:** Python 3.12+ (or Docker). Install into a virtual environment: a plain `pip install` is refused by the system Python on recent Ubuntu, Debian and Homebrew (`externally-managed-environment`).
+
+macOS / Linux (on Debian or Ubuntu, `sudo apt install python3-venv` first if `venv` is missing):
 
 ```bash
+python3 -m venv .venv
+. .venv/bin/activate
 pip install -r requirements.txt
+export TRUST_SALT=my-local-salt   # any stable string; changing it splits reporter histories
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
-Set the trust salt (any stable string; changing it splits reporter histories):
+Windows (PowerShell):
 
-```bash
-export TRUST_SALT=my-local-salt
+```powershell
+python -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+$env:TRUST_SALT = "my-local-salt"
+.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
-Start the server (uses SQLite by default):
+The server uses SQLite by default. On a fresh database it installs the licence in `licenses/long.json` by itself, so it answers at once. Check it from a second terminal:
 
 ```bash
-uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-access-log
+curl http://127.0.0.1:8000/health                                     # {"ok":true}
+curl "http://127.0.0.1:8000/lookup?type=phone&value=%2B919876543210"  # 200, verdict NO_REPORTS
+```
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health
+Invoke-RestMethod "http://127.0.0.1:8000/lookup?type=phone&value=%2B919876543210"
 ```
 
 Or with Docker (app + Postgres):
 
 ```bash
 docker compose up --build
-# Server at http://localhost:8000
+# Server at http://localhost:8080 (docker-compose.yml maps port 8080 to the app)
 ```
 
 ---
@@ -102,22 +117,67 @@ The server runs under a signed licence. An Ed25519 public key is built into the 
 - Data is never deleted on expiry. Uploading a valid licence restores full service instantly.
 - The web app polls `/license` every 10 seconds. When the licence expires, it shows "Licence expired. Contact your provider." When a valid licence is uploaded, the app recovers by itself.
 
-**Live demo steps:**
+**Licence demo, no private key needed.** Run it from the repository folder. Set `URL` to `http://127.0.0.1:8000` locally, `http://localhost:8080` with Docker, or the live address. `licenses/expired.json` is a correctly signed licence whose date has passed; `licenses/long.json` runs to 31 Jan 2027.
 
 ```bash
-# 1. Check health and licence
-curl $URL/health
-curl $URL/license
+URL=http://127.0.0.1:8000
 
-# 2. Install a 5-minute licence
+# 1. The licence is valid. Add one synthetic report so step 3 can show the data survives.
+curl $URL/license                                  # "status":"valid"
+curl -X POST $URL/reports -H 'content-type: application/json' -d '{"report_id":"demo-licence-1","occurred_at":"2026-10-31T12:00:00+05:30","reporter_id":"r_demo_licence","channel":"Phone call","scam_type":"otp-call","identifier_type":"phone","identifier_value":"+91 90000 00042","pincode":"560102","note":"demo report to show the data survives the licence check"}'
+curl "$URL/lookup?type=phone&value=9000000042"     # "report_count":1
+
+# 2. Install the expired licence. Every API route answers 403 {"error":"LICENSE_EXPIRED"},
+#    and the app (open $URL in a browser) shows "Licence expired. Contact your provider." within 10 s.
+curl -X POST $URL/license -H 'content-type: application/json' --data @licenses/expired.json   # "status":"expired"
+for r in "lookup?type=phone&value=9000000042" "map?pincode=560102" "alerts?pincode=560102"; do
+  curl -s -o /dev/null -w "GET /$r -> %{http_code}\n" "$URL/$r"; done
+for r in reports challenges demo/run; do
+  curl -s -o /dev/null -w "POST /$r -> %{http_code}\n" -X POST "$URL/$r" -H 'content-type: application/json' -d '{}'; done
+curl $URL/health                                   # still 200: /health and /license stay open
+
+# 3. Install the long licence. The API is back at once, with no restart and the same data;
+#    the app clears the expired screen within 10 s (it checks every 10 s).
+curl -X POST $URL/license -H 'content-type: application/json' --data @licenses/long.json      # "status":"valid"
+curl "$URL/lookup?type=phone&value=9000000042"     # 200, "report_count":1 as in step 1
+
+# 4. Change one digit (expiry 2027 -> 2028) and upload the copy: the signature check fails.
+sed 's/2027-01-31/2028-01-31/' licenses/long.json > tampered.json
+curl -X POST $URL/license -H 'content-type: application/json' --data @tampered.json          # 400 {"error":"INVALID_LICENSE"}
+curl $URL/license                                  # unchanged: still the long licence, "status":"valid"
+```
+
+`POST /admin/reset` is behind the licence too. It is left out above because with a valid licence it deletes every report.
+
+The same steps in Windows PowerShell. An error status shows up in the `catch`, which prints the code:
+
+```powershell
+$URL = "http://127.0.0.1:8000"
+# 1
+Invoke-RestMethod "$URL/license"
+Invoke-RestMethod -Method Post -Uri "$URL/reports" -ContentType "application/json" -Body '{"report_id":"demo-licence-1","occurred_at":"2026-10-31T12:00:00+05:30","reporter_id":"r_demo_licence","channel":"Phone call","scam_type":"otp-call","identifier_type":"phone","identifier_value":"+91 90000 00042","pincode":"560102","note":"demo report to show the data survives the licence check"}'
+Invoke-RestMethod "$URL/lookup?type=phone&value=9000000042"
+# 2
+Invoke-RestMethod -Method Post -Uri "$URL/license" -ContentType "application/json" -InFile licenses\expired.json
+foreach ($r in "lookup?type=phone&value=9000000042", "map?pincode=560102", "alerts?pincode=560102") {
+  try { Invoke-RestMethod "$URL/$r" | Out-Null; "GET /$r -> 200" } catch { "GET /$r -> $([int]$_.Exception.Response.StatusCode)" } }
+foreach ($r in "reports", "challenges", "demo/run") {
+  try { Invoke-RestMethod -Method Post -Uri "$URL/$r" -ContentType "application/json" -Body '{}' | Out-Null; "POST /$r -> 200" } catch { "POST /$r -> $([int]$_.Exception.Response.StatusCode)" } }
+Invoke-RestMethod "$URL/health"
+# 3
+Invoke-RestMethod -Method Post -Uri "$URL/license" -ContentType "application/json" -InFile licenses\long.json
+Invoke-RestMethod "$URL/lookup?type=phone&value=9000000042"
+# 4
+(Get-Content licenses\long.json -Raw).Replace("2027-01-31", "2028-01-31") | Set-Content -Encoding ascii tampered.json
+try { Invoke-RestMethod -Method Post -Uri "$URL/license" -ContentType "application/json" -InFile tampered.json } catch { [int]$_.Exception.Response.StatusCode }
+Invoke-RestMethod "$URL/license"
+```
+
+**Operator only** (needs the private key, which is never in this repository): mint a short licence for a live countdown.
+
+```bash
 python tools/make_license.py --licensee "Demo Bank" --minutes 5 > lic5.json
 curl -X POST $URL/license -H 'content-type: application/json' --data @lic5.json
-
-# 3. Wait for expiry → lookups return 403
-curl "$URL/lookup?type=phone&value=1930"
-
-# 4. Restore with the long licence → service recovers, no restart
-curl -X POST $URL/license -H 'content-type: application/json' --data @licenses/long.json
 ```
 
 ---
@@ -147,6 +207,8 @@ One line per request: time, method, path (without the query string), status, dur
 ## Proof
 
 All results below are from our own synthetic data and generators. They are not from the judges' tool and do not represent results on unknown data. We quote them as "in our tests".
+
+**Live run:** the attack scenarios sent over HTTP to the live server (31 Oct 2026, 21:48 IST, 2 seeds, 1,677 reports, 0 failures, 2 known limits): [tests/attack/LIVE_ATTACK_TABLE.txt](tests/attack/LIVE_ATTACK_TABLE.txt).
 
 ### Test commands
 
