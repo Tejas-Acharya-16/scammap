@@ -23,7 +23,7 @@ def watch_csp(page):
 
 def test_app_page_works_under_the_csp(live_server, page):
     seen = watch_csp(page)
-    resp = page.goto(live_server + "/")
+    resp = page.goto(live_server + "/#check")
     assert resp.headers["content-security-policy"] == CSP
     assert page.inner_text("header b")                                  # the title strings rendered (inline script ran)
     page.fill("#q", "1930")
@@ -58,7 +58,7 @@ def test_licence_expired_screen_works_under_the_csp(live_server, page):
     seen = watch_csp(page)
     try:
         assert httpx.post(live_server + "/license", json=expired, timeout=5).status_code == 200
-        resp = page.goto(live_server + "/")
+        resp = page.goto(live_server + "/#check")
         assert resp.status == 200 and resp.headers["content-security-policy"] == CSP
         page.wait_for_selector("#expired:not(.hidden)")
         assert "Licence expired. Contact your provider." in page.inner_text("#expired")

@@ -38,7 +38,7 @@ def test_reported_link_with_markup_is_shown_as_text_and_runs_nothing(live_server
     r = httpx.get(live_server + "/lookup", params={"type": "url", "value": XSS_LINK}, timeout=5).json()
     assert r["distinct_reporters"] == 3 and "evil.example" in r["display_value"]   # unmasked: the dangerous case
 
-    page.goto(live_server + "/")
+    page.goto(live_server + "/#check")
     page.fill("#q", XSS_LINK)
     page.click("#go")
     page.wait_for_selector("#result .mono")
@@ -54,7 +54,7 @@ def test_the_page_escapes_every_lookup_field_on_its_own(live_server, page):
                "challenged": True, "evidence": [{"occurred_at": PAYLOAD, "channel": PAYLOAD, "scam_type": PAYLOAD,
                                                  "pincode": PAYLOAD}], "trust": {"voices": PAYLOAD, "hold": False}}
     page.route("**/lookup**", lambda route: fulfil(route, hostile))
-    page.goto(live_server + "/")
+    page.goto(live_server + "/#check")
     page.fill("#q", "9000011111")
     page.click("#go")
     page.wait_for_selector("#result .mono")
@@ -83,7 +83,7 @@ def test_the_page_escapes_map_and_alert_fields_on_its_own(live_server, page):
     page.route("**/alerts**", lambda route: fulfil(route, {"alerts": [
         {"type": "SPIKE", "pincode": PAYLOAD, "window": "24h", "count": PAYLOAD, "baseline_per_day": PAYLOAD},
         {"type": "NEW_TYPE", "pincode": PAYLOAD, "scam_type": PAYLOAD, "window": "24h"}]}))
-    page.goto(live_server + "/")
+    page.goto(live_server + "/#check")
     page.click("nav button[data-tab=area]")
     page.wait_for_selector("#clusters .cluster")
     assert_nothing_ran(page, "#clusters", "#alerts")
