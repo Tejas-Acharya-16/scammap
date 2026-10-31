@@ -26,6 +26,7 @@ or earlier hackathons.
 ## In the browser
 
 - qrcodejs 1.0.0, loaded from cdnjs, draws the QR code on the judge console (`/judge`). The page works without it.
+- Leaflet 1.9.4 (BSD-2-Clause), loaded from cdnjs, draws the live scam map (`/live`). Map tiles come from CARTO, built on OpenStreetMap data (© OpenStreetMap contributors, ODbL), and are credited on the map. The viewer's browser fetches the tiles; no report data is sent to them. Without them the page falls back to a plain plot of area centres.
 - No web fonts: the pages use the device's system fonts (Inter where the device already has it). Both pages share one stylesheet, `app/static/theme.css`, written for this project.
 - The map pin in the header is drawn in CSS. No logo, image or asset from any other site or company is used.
 - Icons are Unicode emoji, drawn by the device's own emoji font. No icon pack and no third-party logos.
