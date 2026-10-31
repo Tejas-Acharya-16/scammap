@@ -11,6 +11,11 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scammap"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
 
   app:
     build: .
@@ -22,7 +27,8 @@ services:
       PORT: "8000"
       ALLOW_RESET: "1"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
 volumes:
   pgdata:
