@@ -1,4 +1,4 @@
-Attack table, engine v1.3 (config d7a23b4c), Sun 01 Nov 2026 03:10 IST. In-process run of python -m tests.engine.scenarios --seeds 60 --compare.
+Attack table, engine v1.3 (config d7a23b4c), Sun 01 Nov 2026 02:37 IST. In-process run of python -m tests.engine.scenarios --seeds 60 --compare.
 Synthetic data and our own generators; not the judges' tool, not real-world accuracy. Quote as 'in our tests'.
 v1.3: notes never block an honest report (lazy test data with empty notes or one example sentence still flips);
 copy-paste links only within 6 hours; a burst of new empty-note accounts merges from any area.
