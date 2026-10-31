@@ -20,7 +20,7 @@ services:
   app:
     build: .
     ports:
-      - "8080:8000"
+      - "8000:8000"
     environment:
       DATABASE_URL: postgresql://scammap:localdev@db:5432/scammap
       TRUST_SALT: local-dev-salt-do-not-use-in-prod
