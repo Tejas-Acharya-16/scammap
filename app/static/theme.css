@@ -1,0 +1,121 @@
+/* Community Scam Map: one theme for the app (/) and the judge console (/judge).
+   Light surfaces, one green accent, monospace for identifiers and small labels.
+   No web fonts (the CSP allows only this origin): Inter is used where it is installed,
+   otherwise the device's own UI font. Devanagari falls back to the device's Hindi font. */
+:root{
+  --bg:#F6F8F6; --bg-2:#EEF2EF; --surface:#FFFFFF; --surface-2:#F4F6F4;
+  --ink:#0F1512; --ink-2:#27312C; --muted:#5D6963; --faint:#8C978F;
+  --line:#E2E7E3; --line-2:#D1D8D3; --dot:#D3DBD5;
+  --accent:#00C96B; --accent-hover:#00B862; --accent-ink:#03140A;
+  --accent-text:#0A8549; --accent-strong:#0A9B55; --accent-soft:#E8F8EF; --accent-line:#BCE9CF;
+  --warn:#D2412D; --warn-text:#B3301D; --warn-soft:#FFF0ED; --warn-line:#F5C6BE;
+  --amber:#9A5B00; --amber-soft:#FFF5E1; --amber-line:#EFD39B;
+  --gray:#56625C; --gray-soft:#F0F3F1; --gray-line:#D9DFDB;
+  --night:#0C2A21; --night-2:#14392E; --night-line:rgba(255,255,255,.07);
+  --night-ink:#EAF3EF; --night-muted:#A3BAB0; --gold:#E4A852;
+  --r-sm:10px; --r:14px; --r-lg:18px; --r-xl:30px; --pill:999px;
+  --shadow:0 1px 2px rgba(15,21,18,.04),0 12px 28px -16px rgba(15,21,18,.16);
+  --shadow-lg:0 2px 6px rgba(15,21,18,.05),0 40px 80px -28px rgba(15,21,18,.28);
+  --focus:0 0 0 3px rgba(0,201,107,.32);
+  --font:"Inter","Inter Variable",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","Noto Sans Devanagari","Nirmala UI","Mangal",sans-serif;
+  --mono:"JetBrains Mono","SFMono-Regular","SF Mono",ui-monospace,Menlo,Consolas,"DejaVu Sans Mono","Liberation Mono",monospace;
+  /* names the page scripts already use */
+  --green:var(--accent-text); --greenbg:var(--accent-soft);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:var(--font);background:var(--bg);color:var(--ink);font-size:16px;line-height:1.45;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--accent-text);text-underline-offset:3px}
+:focus-visible{outline:none;box-shadow:var(--focus)}
+.hidden{display:none!important}
+.muted{color:var(--muted);font-size:14px}
+.ok{color:var(--accent-text);font-weight:700}
+.err{color:var(--warn-text);font-weight:600}
+.mono,code,pre{font-family:var(--mono)}
+
+/* ------------------------------------------------------------------ top strip (laptop only) */
+.strip{display:none;background:#0B0F0D;color:#C7D0CB;font-size:13px}
+.strip .in{max-width:1240px;margin:0 auto;padding:7px 24px;text-align:center}
+.strip b{color:var(--gold);font-weight:600}
+
+/* ------------------------------------------------------------------ shared header */
+.site{position:sticky;top:0;z-index:10;background:rgba(249,251,249,.94);border-bottom:1px solid var(--line);
+  -webkit-backdrop-filter:saturate(1.4) blur(10px);backdrop-filter:saturate(1.4) blur(10px)}
+.site .in{max-width:1240px;margin:0 auto;padding:8px 16px 10px;display:grid;grid-template-columns:minmax(0,1fr) auto;
+  grid-template-areas:"brand tools" "nav nav";align-items:center;gap:8px 10px}
+.brand{grid-area:brand;display:flex;align-items:center;gap:9px;min-width:0;color:var(--ink);text-decoration:none}
+.mk{position:relative;flex:none;width:24px;height:24px;margin:0 3px 0 2px;border-radius:50% 50% 50% 5px;transform:rotate(-45deg);background:var(--accent)}
+.mk::after{content:"";position:absolute;inset:7px;border-radius:50%;background:var(--surface)}
+.wm{display:flex;flex-direction:column;min-width:0;line-height:1.05}
+.wm b{font-size:15px;font-weight:750;letter-spacing:-.015em;white-space:nowrap}
+.wm b span{display:block;color:var(--accent-text)}
+.wm small{display:none;margin-top:4px;font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.tools{grid-area:tools;display:flex;align-items:center;gap:8px}
+.pill{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 11px;border-radius:var(--pill);border:1px solid var(--line-2);
+  background:var(--surface);color:var(--muted);font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}
+.pill i{flex:none;width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.ok{color:var(--accent-text);background:var(--accent-soft);border-color:var(--accent-line)}
+.pill.bad{color:var(--warn-text);background:var(--warn-soft);border-color:var(--warn-line)}
+.pill .pl-w{display:none}
+.lang{display:inline-flex;gap:2px;padding:3px;border:1px solid var(--line-2);border-radius:var(--pill);background:var(--surface)}
+.lang button{height:28px;padding:0 10px;border:0;border-radius:var(--pill);background:transparent;font-size:13.5px;font-weight:600;color:var(--ink-2)}
+.lang button.on{background:var(--ink);color:#fff}
+.sitenav{grid-area:nav;display:flex;gap:6px;min-width:0}
+.sitenav>button,.sitenav>a{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;height:40px;padding:0 8px;
+  border:1px solid var(--line);border-radius:var(--pill);background:var(--surface);color:var(--ink-2);
+  font-size:14.5px;font-weight:600;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sitenav>.nj{flex:0 0 auto;padding:0 14px}
+.sitenav>button.on,.sitenav>a.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.sitenav .lg{display:none}
+@media (min-width:900px){
+  .strip{display:block}
+  .site .in{grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"brand nav tools";padding:12px 24px;gap:24px}
+  .wm b{font-size:18px}
+  .wm b span{display:inline}
+  .wm small{display:block}
+  .mk{width:28px;height:28px}
+  .mk::after{inset:8px}
+  .pill .pl-w{display:inline}
+  .sitenav{justify-content:center;gap:4px}
+  .sitenav>button,.sitenav>a{flex:0 0 auto;height:40px;padding:0 14px;border-color:transparent;background:transparent;font-size:15.5px;font-weight:500}
+  .sitenav>button:hover,.sitenav>a:hover{color:var(--accent-text)}
+  .sitenav>button.on,.sitenav>a.on{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-text);font-weight:650}
+  .sitenav .lg{display:inline}
+  .sitenav .sm{display:none}
+}
+
+/* ------------------------------------------------------------------ building blocks */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
+input,select,textarea{font-size:16px;padding:11px 13px;border:1px solid var(--line-2);border-radius:12px;background:var(--surface);color:var(--ink);
+  transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:var(--focus)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:10px 22px;border:1px solid var(--accent);border-radius:var(--pill);
+  background:var(--accent);color:var(--accent-ink);font-size:16px;font-weight:650;text-decoration:none;transition:background .15s,border-color .15s}
+.btn:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.btn.alt{background:var(--surface);border-color:var(--line-2);color:var(--ink)}
+.btn.alt:hover{border-color:var(--ink-2)}
+.btn:disabled{opacity:.6;cursor:default}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;margin:0;color:var(--accent-text);font-size:14.5px;font-weight:600}
+.eyebrow::before,.eyebrow::after{content:"";width:14px;height:2px;border-radius:2px;background:currentColor}
+.label-mono{margin:0;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.tag{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border:1px solid var(--accent-line);border-radius:var(--pill);background:var(--accent-soft);
+  color:var(--accent-text);font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;white-space:nowrap}
+.tag.bad{border-color:var(--warn-line);background:var(--warn-soft);color:var(--warn-text)}
+.tag.idle{border-color:var(--line);background:var(--surface-2);color:var(--muted)}
+
+/* verdicts: one colour each, the same on both pages; "Known scam" is the only solid one */
+.v-KNOWN_SCAM{--c:#fff;--cb:var(--warn);--cl:var(--warn)}
+.v-SUSPICIOUS{--c:var(--amber);--cb:var(--amber-soft);--cl:var(--amber-line)}
+.v-NO_REPORTS{--c:var(--gray);--cb:var(--gray-soft);--cl:var(--gray-line)}
+.v-VERIFIED_BUSINESS{--c:var(--accent-text);--cb:var(--accent-soft);--cl:var(--accent-line)}
+.verdict,.v{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--cl,var(--line));border-radius:var(--pill);
+  background:var(--cb,var(--surface));color:var(--c,var(--ink));font-weight:700;white-space:nowrap}
+.verdict::before,.v::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:currentColor}
+.verdict{padding:6px 14px;font-size:15px}
+.v{padding:1px 9px;font-size:12px}
+
+/* Devanagari: wide letter-spacing pulls the joined letters apart, so the spaced labels go tight in Hindi */
+html[lang="hi"] .pill,html[lang="hi"] .label-mono,html[lang="hi"] .wm small,html[lang="hi"] .tag{letter-spacing:.02em}

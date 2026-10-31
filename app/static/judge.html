@@ -4,83 +4,92 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Judge Console · Community Scam Map</title>
+<link rel="stylesheet" href="/static/theme.css">
 <style>
-:root{--ink:#0B1F3A;--muted:#5B6B80;--line:#D6DEE8;--bg:#F5F7FA;--card:#fff;--green:#1E8E5A;--greenbg:#EAF6EF;--warn:#C0392B;--warnbg:#FDECEA;--amber:#B7791F;--gray:#6B7C93}
-*{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.45}
-header{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-header b{font-size:17px}
-.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:16px;font-weight:700;font-size:13px;border:1px solid var(--line);background:#fff}
-.pill.ok{background:var(--greenbg);border-color:var(--green);color:var(--green)}
-.pill.bad{background:var(--warnbg);border-color:var(--warn);color:var(--warn)}
-.banner{background:var(--warn);color:#fff;padding:10px 16px;font-weight:600}
-main{max-width:1180px;margin:0 auto;padding:16px 16px 48px}
-h1{font-size:22px;margin:4px 0 6px}
-h2{font-size:17px;margin:0}
-h3{font-size:16px;margin:0 0 8px;display:flex;align-items:center;gap:8px}
+/* The judge console's own layout. The shared look (colours, header, cards, buttons) is in /static/theme.css. */
+body{font-size:15px}
+main{max-width:1240px;margin:0 auto;padding:16px 16px 56px}
+h2{font-size:17px;margin:0;letter-spacing:-.01em}
+h3{font-size:16px;margin:0 0 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 p{margin:6px 0}
-.muted{color:var(--muted);font-size:13px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
-.grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);gap:14px;align-items:start}
+.muted{font-size:13.5px}
+.hero{padding:20px}
+.hero h1{margin:10px 0 8px;font-size:27px;line-height:1.12;font-weight:650;letter-spacing:-.025em}
+.hero h1 em{color:var(--accent-strong)}
+.hero>p{max-width:860px;color:var(--ink-2)}
+.grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);gap:16px;align-items:start}
 @media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
-.btn{display:inline-block;padding:10px 16px;border:0;border-radius:10px;background:var(--green);color:#fff;font-size:15px;font-weight:700;cursor:pointer}
-.btn.alt{background:#fff;color:var(--ink);border:1px solid var(--ink)}
-.btn.small{padding:8px 12px;font-size:14px}
-.btn:disabled{opacity:.55;cursor:default}
-.runbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px}
+.btn{min-height:44px;padding:9px 20px;font-size:15px}
+.btn.small{min-height:38px;padding:7px 14px;font-size:14px}
+.runbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}
 .runbar input{width:110px}
-input{font-size:15px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);min-width:0}
-.rowtag{display:inline-block;background:var(--ink);color:#fff;border-radius:7px;padding:2px 8px;font-size:12px;font-weight:700;letter-spacing:.02em;white-space:nowrap}
-.sechead{display:flex;align-items:center;gap:10px;margin-bottom:6px}
-.sechead h2{flex:1}
-.score{font-weight:800;font-size:15px;padding:3px 10px;border-radius:12px}
-.score.good{background:var(--greenbg);color:var(--green)}
-.score.bad{background:var(--warnbg);color:var(--warn)}
-.score.idle{background:var(--bg);color:var(--muted)}
-details.chk{border-top:1px solid var(--line);padding:8px 0}
+input{font-size:15px;padding:9px 12px;min-width:0}
+.rowtag{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:var(--pill);background:var(--ink);color:#fff;
+  font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}
+.sechead{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.sechead h2{flex:1;min-width:0}
+.score{font-family:var(--mono);font-weight:700;font-size:13px;padding:3px 10px;border-radius:var(--pill);border:1px solid}
+.score.good{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-text)}
+.score.bad{background:var(--warn-soft);border-color:var(--warn-line);color:var(--warn-text)}
+.score.idle{background:var(--surface-2);border-color:var(--line);color:var(--muted)}
+details.chk{border-top:1px solid var(--line);padding:9px 0}
 details.chk summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:22px minmax(0,1fr);gap:2px 8px;align-items:start}
 details.chk summary::-webkit-details-marker{display:none}
-.mark{font-weight:900;font-size:16px;line-height:1.3}
-.pass .mark{color:var(--green)}.fail .mark{color:var(--warn)}
+.mark{font-weight:900;font-size:15px;line-height:1.35}
+.pass .mark{color:var(--accent-text)}.fail .mark{color:var(--warn-text)}
 .ct{font-weight:600}
 .gist{grid-column:2;font-size:13px;color:var(--muted)}
 .ct,.gist,.how,.want,dd,ul.live li span{min-width:0;overflow-wrap:anywhere}
-.how{margin:6px 0 4px 30px;font-size:13px;color:var(--muted)}
+.how{margin:8px 0 4px 30px;font-size:13px;color:var(--muted)}
 .want{margin:0 0 4px 30px;font-size:13px}
-pre{margin:4px 0 0 30px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;font-size:12px;overflow-x:auto;white-space:pre-wrap;word-break:break-word;max-height:280px}
-.v{display:inline-block;padding:1px 8px;border-radius:10px;color:#fff;font-weight:700;font-size:12px}
-.v-KNOWN_SCAM{background:var(--warn)}.v-SUSPICIOUS{background:var(--amber)}.v-NO_REPORTS{background:var(--gray)}.v-VERIFIED_BUSINESS{background:var(--green)}
-code,.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
-dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;margin:6px 0 10px}
-dt{color:var(--muted);font-size:13px}dd{margin:0;font-weight:600;word-break:break-word}
+pre{margin:6px 0 0 30px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:12px;overflow-x:auto;white-space:pre-wrap;word-break:break-word;max-height:280px}
+code,.mono{font-size:12.5px}
+dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px 14px;margin:8px 0 14px}
+dt{padding-top:3px;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+dd{margin:0;font-weight:600;word-break:break-word}
 .file{position:relative;overflow:hidden}
 .file input{position:absolute;inset:0;opacity:0;cursor:pointer}
-ul.live{list-style:none;margin:8px 0 0;padding:0}
-ul.live li{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:6px;padding:6px 0;border-top:1px solid var(--line);font-size:13px}
-ul.live li .ms{color:var(--muted)}
+ul.live{list-style:none;margin:10px 0 0;padding:0}
+ul.live li{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:6px;padding:7px 0;border-top:1px solid var(--line);font-size:13px}
+ul.live li .ms{color:var(--muted);font-family:var(--mono);font-size:12px}
 .row{display:flex;gap:8px;align-items:center}
 .row input{flex:1}
-.big{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums}
+.big{font-family:var(--mono);font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 #qr{width:132px;height:132px;margin:6px 0}
 #qr img,#qr canvas{width:132px;height:132px}
-.hidden{display:none}
-a{color:var(--ink)}
-.note{background:#FFF8E6;border-radius:10px;padding:10px;font-size:13px;margin-top:8px}
+.banner{background:var(--warn);color:#fff;padding:10px 24px;font-weight:600;text-align:center}
+.note{background:var(--amber-soft);border:1px solid var(--amber-line);border-radius:12px;padding:10px 12px;font-size:13px;margin-top:8px}
+a{color:var(--accent-text)}
+/* Row 5, the licence: the dark evidence panel */
+#r5{--green:#3DDC8B;--warn:#FF8B7A;background-color:var(--night);color:var(--night-ink);border-color:var(--night-2);background-size:28px 28px;
+  background-image:linear-gradient(var(--night-line) 1px,transparent 1px),linear-gradient(90deg,var(--night-line) 1px,transparent 1px)}
+#r5 .rowtag{background:transparent;border:1px solid rgba(228,168,82,.55);color:var(--gold)}
+#r5 dt{color:var(--gold)}
+#r5 dd{color:#fff}
+#r5 .muted{color:var(--night-muted)}
+#r5 .btn.alt{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.24);color:var(--night-ink)}
+#r5 .btn.alt:hover{border-color:rgba(255,255,255,.55)}
+@media (min-width:900px){main{padding:28px 24px 64px}.hero{padding:28px 30px}.hero h1{font-size:36px}}
 </style>
 </head>
 <body>
-<header>
-  <div><b>Community Scam Map</b> <span class="muted">· Judge console</span></div>
-  <div class="row"><span id="rules" class="pill">Rules …</span><span id="licPill" class="pill">Licence …</span></div>
-</header>
+<div class="strip"><div class="in"><b data-t="stripA">Anonymous by design</b> <span data-t="stripB">· no login, no name, no phone number asked</span></div></div>
+<header class="site"><div class="in">
+  <a class="brand" href="/" aria-label="Community Scam Map"><span class="mk" aria-hidden="true"></span><span class="wm"><b>Community <span>Scam Map</span></b><small data-t="tag">Report · check · anonymous</small></span></a>
+  <nav class="sitenav" aria-label="Main"><a href="/#check" data-t="tCheck">Check</a><a href="/#report" data-t="tReport">Report</a><a href="/#area" data-t="tArea">My area</a><a class="nj on" href="/judge" aria-current="page"><span class="lg" data-t="tJudge">Judge console</span><span class="sm" data-t="tJudgeS">Judge</span></a></nav>
+  <div class="tools"><span id="licPill" class="pill" role="status"><i></i><span class="pl-w" data-t="licW">Licence</span><span id="licTxt">…</span></span><span class="lang"><button id="l-en" class="on">EN</button><button id="l-hi">हिन्दी</button></span></div>
+</div></header>
 <div id="lockBanner" class="banner hidden">Licence expired: every API route now answers 403 {"error":"LICENSE_EXPIRED"}. Upload a valid licence file in Row 5.</div>
 <main>
-  <section class="card">
-    <h1>Check every scoring row on one page</h1>
+  <section class="card hero">
+    <p class="eyebrow">Judge console</p>
+    <h1>Check every scoring row on <em>one page</em></h1>
     <p>Rows 1 to 4 and the bonus run in a <b>sandbox</b>: a fresh copy of the same engine and the same rules as this server, filled with new synthetic data on every run. It never reads or writes the live data, so you can run it as often as you like. Rows 5 to 7 and the live checks use this server directly.</p>
+    <p id="hiNote" class="note hidden" lang="hi">जज कंसोल अंग्रेज़ी में है: जाँच के नतीजे सर्वर से अंग्रेज़ी में आते हैं। ऐप पूरा हिन्दी में है।</p>
     <div class="runbar">
       <button id="runAll" class="btn">Run all checks</button>
       <label class="muted">Seed <input id="seed" placeholder="random" inputmode="numeric"></label>
+      <span id="rules" class="tag idle">Rules …</span>
       <span id="runSum" class="muted">Not run yet.</span>
     </div>
   </section>
@@ -195,6 +204,7 @@ async function runAll() {
       render(r.body);
       $("runSum").innerHTML = `<b>${esc(r.body.passed)}/${esc(r.body.total)} checks passed</b> · ${esc(r.body.ran_ms)} ms on the server · seed ${esc(r.body.seed)} · live data touched: ${r.body.live_data_touched ? "yes" : "no"}`;
       $("rules").textContent = "Rules " + r.body.config;
+      $("rules").className = "tag";
     } else if (r.status === 403) {
       $("runSum").innerHTML = `<span style="color:var(--warn);font-weight:700">403 LICENSE_EXPIRED</span>: the licence gate is working. Upload a valid licence in Row 5, then run again.`;
     } else {
@@ -217,8 +227,8 @@ async function pollLicence() {
     $("lExp").textContent = b.expires_at || "-";
     const valid = b.valid === true || b.status === "valid";
     $("lStat").innerHTML = valid ? '<span style="color:var(--green)">valid</span>' : `<span style="color:var(--warn)">${esc(b.status || "not valid")}</span>`;
-    $("licPill").className = "pill " + (valid ? "ok" : "bad");
-    $("licPill").textContent = valid ? "Licence valid" : "Licence " + (b.status || "not valid");
+    pillState = [valid ? "ok" : "bad", b.status || ""];
+    paintPill();
     lock(!valid);
     let left = b.seconds_remaining;
     if (left == null && b.expires_at) left = Math.round((Date.parse(b.expires_at) - Date.now()) / 1000);
@@ -327,7 +337,38 @@ async function tryValue() {
 $("qBtn").onclick = tryValue;
 $("q").onkeydown = e => { if (e.key === "Enter") tryValue(); };
 
+// ------------------------------------------------------------------ shared header: language and licence pill
+// The language choice is shared with the app (same storage key). The console itself stays in English:
+// its check titles and results come from the server in English, so Hindi changes the header and shows a note.
+const L = {
+  en: {tag: "Report · check · anonymous", tCheck: "Check", tReport: "Report", tArea: "My area", tJudge: "Judge console", tJudgeS: "Judge",
+       stripA: "Anonymous by design", stripB: "· no login, no name, no phone number asked", licW: "Licence", licOk: "valid", licExp: "expired", licBad: "not valid"},
+  hi: {tag: "रिपोर्ट · जाँच · गुमनाम", tCheck: "जाँचें", tReport: "रिपोर्ट करें", tArea: "मेरा इलाका", tJudge: "जज कंसोल", tJudgeS: "जज",
+       stripA: "डिज़ाइन से गुमनाम", stripB: "· न लॉगिन, न नाम, न फ़ोन नंबर", licW: "लाइसेंस", licOk: "मान्य", licExp: "समाप्त", licBad: "अमान्य"},
+};
+let lang = "en", pillState = ["wait", ""];
+try { lang = localStorage.getItem("lang") === "hi" ? "hi" : "en"; } catch (e) {}
+const T = k => L[lang][k] || L.en[k] || k;
+function paintPill() {
+  const [st, status] = pillState;
+  $("licPill").className = "pill" + (st === "ok" ? " ok" : st === "bad" ? " bad" : "");
+  // a status other than "expired" (such as clock_rollback) is shown as the server says it: judges may want it
+  $("licTxt").textContent = st === "ok" ? T("licOk") : st === "bad" ? (status === "expired" ? T("licExp") : status || T("licBad")) : "…";
+}
+function paint() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-t]").forEach(e => { e.textContent = T(e.dataset.t); });
+  $("l-en").className = lang === "en" ? "on" : "";
+  $("l-hi").className = lang === "hi" ? "on" : "";
+  $("hiNote").className = lang === "hi" ? "note" : "note hidden";
+  paintPill();
+}
+function setLang(l) { lang = l; try { localStorage.setItem("lang", l); } catch (e) {} paint(); }
+$("l-en").onclick = () => setLang("en");
+$("l-hi").onclick = () => setLang("hi");
+
 // ------------------------------------------------------------------ start
+paint();
 $("repo").href = REPO;
 $("runAll").onclick = runAll;
 placeholders();
