@@ -2,15 +2,18 @@
 
 Wires the pure engine (app/engine) to FastAPI, SQLAlchemy (sqlite locally,
 Postgres via DATABASE_URL) and middleware (BUILD_SPEC sections 2, 3 and 10).
+Licence gate (section 9): Ed25519, every request, no restart to swap.
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
 import time
 import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -20,6 +23,7 @@ from sqlalchemy import BigInteger, Boolean, Column, Integer, MetaData, Table, Te
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.engine import Engine, Registry
+from app.license import LicenseState, EXEMPT_PATHS, STATIC_PREFIX
 
 # ── logging (section 10) ─────────────────────────────────────────────────────
 # One line per request: time, method, path (no query string), status, duration.
@@ -83,8 +87,6 @@ def _build_engine():
 
 
 # ── injected clock ───────────────────────────────────────────────────────────
-from datetime import datetime, timezone
-
 
 class Clock:
     """Production clock. Tests replace this."""
@@ -94,6 +96,10 @@ class Clock:
 
 
 clock = Clock()
+
+# ── licence state (in-memory, backed by kv table) ────────────────────────────
+LICENSE = LicenseState()
+_last_clock_write: float = 0  # monotonic time of last clock guard write
 
 
 # ── database operations ─────────────────────────────────────────────────────
@@ -171,6 +177,55 @@ if not TRUST_SALT:
 ENGINE = Engine(REGISTRY, salt=TRUST_SALT)
 
 
+def _load_license_from_db(db: DB):
+    """Restore licence and clock guard from kv table at startup."""
+    raw = db.kv_get("license")
+    if raw:
+        try:
+            data = json.loads(raw)
+            ok, _ = LICENSE.verify_and_install(data)
+            if ok:
+                logger.info("restored licence: %s expires %s", LICENSE.licensee, LICENSE.expires_at)
+            else:
+                logger.warning("stored licence failed verification")
+        except Exception:
+            logger.warning("stored licence is corrupt")
+    else:
+        # Install the default long licence on a fresh database
+        default_path = Path(__file__).parent.parent / "licenses" / "long.json"
+        if default_path.exists():
+            try:
+                data = json.loads(default_path.read_text())
+                ok, _ = LICENSE.verify_and_install(data)
+                if ok:
+                    db.kv_set("license", json.dumps(data))
+                    logger.info("installed default licence: %s", LICENSE.licensee)
+            except Exception:
+                logger.warning("default licence file is corrupt")
+
+    # Restore clock guard
+    saved = db.kv_get("latest_clock")
+    if saved:
+        try:
+            from app.engine.timeutil import parse_time
+            dt = parse_time(saved)
+            if dt:
+                LICENSE.set_latest_clock(dt)
+                logger.info("restored clock guard: %s", dt.isoformat())
+        except Exception:
+            pass
+
+
+def _persist_clock_guard(db: DB, now: datetime):
+    """Write the latest time seen to kv at most every 30 seconds."""
+    global _last_clock_write
+    mono = time.monotonic()
+    if mono - _last_clock_write >= 30:
+        LICENSE.update_clock(now)
+        db.kv_set("latest_clock", now.isoformat())
+        _last_clock_write = mono
+
+
 # ── lifespan ─────────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -184,6 +239,10 @@ async def lifespan(app: FastAPI):
     challenge_rows = db.all_challenge_rows()
     n = ENGINE.load(report_rows, challenge_rows)
     logger.info("loaded %d reports and %d challenges from database", n, len(challenge_rows))
+
+    # Restore licence and clock guard
+    _load_license_from_db(db)
+    LICENSE.update_clock(clock.now())
 
     yield
 
@@ -225,8 +284,33 @@ class BodySizeLimitMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-# Order: body size -> logging -> routes
+class LicenseGateMiddleware(BaseHTTPMiddleware):
+    """Return 403 LICENSE_EXPIRED on every non-exempt route when the licence
+    is invalid. Runs on EVERY request (section 9.2). Also persists the clock guard."""
+
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        # Exempt: /health, /license (GET and POST), static files
+        if path in EXEMPT_PATHS or path.startswith(STATIC_PREFIX + "/"):
+            return await call_next(request)
+
+        now = clock.now()
+        LICENSE.update_clock(now)
+
+        # Persist clock guard periodically
+        if hasattr(request.app.state, "db"):
+            _persist_clock_guard(request.app.state.db, now)
+
+        if not LICENSE.is_valid(now):
+            return JSONResponse({"error": "LICENSE_EXPIRED"}, status_code=403)
+
+        return await call_next(request)
+
+
+# Order: body size -> licence gate -> logging -> routes
+# Middleware is applied in reverse order (last added = outermost)
 app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(LicenseGateMiddleware)
 app.add_middleware(BodySizeLimitMiddleware)
 
 
@@ -253,6 +337,28 @@ async def method_not_allowed_handler(request: Request, exc):
 @app.get("/health")
 def health():
     return {"ok": True}
+
+
+@app.get("/license")
+def get_license():
+    return JSONResponse(LICENSE.to_get_response(clock.now()))
+
+
+@app.post("/license")
+async def post_license(request: Request):
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "INVALID_LICENSE"}, status_code=400)
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "INVALID_LICENSE"}, status_code=400)
+    ok, error = LICENSE.verify_and_install(body)
+    if not ok:
+        return JSONResponse({"error": error}, status_code=400)
+    # Persist to kv
+    app.state.db.kv_set("license", json.dumps(body))
+    logger.info("licence installed: %s expires %s", LICENSE.licensee, LICENSE.expires_at)
+    return JSONResponse(LICENSE.to_get_response(clock.now()))
 
 
 @app.post("/reports")
