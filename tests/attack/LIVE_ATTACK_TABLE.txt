@@ -1,0 +1,41 @@
+2026-10-31 21:48:27 IST | X-Commit: d141030 | our generators, not the judges' tool
+Target: https://scammap-yp1k.onrender.com. This resets the server before and after. Seeds: 2
+  seed 1/2: 834 reports sent (37 s)
+  seed 2/2: 843 reports sent (73 s)
+
+Scenario                                             Want  KNOWN_SCAM  Result
+8 reporters with history, spread over 13 days        high        100%  PASS
+8 brand-new reporters, spread                        high        100%  PASS
+6 brand-new, all within 2 hours                      high        100%  PASS
+3 brand-new, own words                               high        100%  PASS
+8 new, templated notes                               high        100%  PASS
+8 new, half with empty notes                         high        100%  PASS
+10 reporters on only 15 shared networks              high        100%  PASS
+8 new, short notes of 3 to 4 words                   high        100%  PASS
+8 new, 4 of them on 2 shared networks, days apart    high        100%  PASS
+7 new, notes picked from a list of 10 sample texts   high        100%  PASS
+4 new, notes picked from a list of 10 sample texts   high        100%  PASS
+12 new within 3 hours, across 6 areas                high        100%  PASS
+20 friends in one hour + 3 real people elsewhere     high        100%  PASS
+8 new, all empty notes                               high          0%  KNOWN LIMIT
+2 new, own words (must stay SUSPICIOUS)              low           0%  PASS
+40 friends, same note, 40 networks                   0             0%  PASS
+40 friends, empty notes                              0             0%  PASS
+22 accounts, one network, varied notes               0             0%  PASS
+22 accounts, one network, empty notes                0             0%  PASS
+22 accounts, one network, times spread over 5 days   0             0%  PASS
+one person x6, same network                          0             0%  PASS
+one person x6, rotating networks                     0             0%  PASS
+20 accounts on 2 networks, same note                 0             0%  PASS
+40 friends, 5 canned short phrases                   0             0%  PASS
+40 friends, 5 canned long phrases                    0             0%  PASS
+40 friends, notes picked from a list of 10 texts     0             0%  PASS
+3 attackers x 10 accounts, 3 networks, varied notes  0             0%  PASS
+40 friends report the verified bakery                0             0%  PASS
+1 person + 10 friends, own words, one area, 1 hour   0             0%  PASS
+40 friends, own varied notes, 40 networks, one area  0             0%  PASS
+40 friends, lightly reworded (up to 3 word swaps)    0             0%  PASS
+1 person + 10 friends, each picks another area       0           100%  KNOWN LIMIT
+
+1677 reports sent over HTTP, 0 rejected (expected 0). Failures: 0.
+Our generators, not the judges' tool. Quote as 'in our tests'.
