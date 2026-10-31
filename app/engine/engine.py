@@ -189,6 +189,8 @@ class Engine:
         self._voices_cache = {}               # ikey -> [Voice]
         self._core_cache = {}                 # ikey -> burst core over all voices (track records)
         self._counted_cache = None            # pincode -> [_Counted]
+        self._generation = 0                  # bumps on every change
+        self._live_cache = None               # (days, computed_at, reply): the live summary, kept 10 s
 
     # ------------------------------------------------------------------ lifecycle
     def reset(self) -> None:
@@ -298,6 +300,7 @@ class Engine:
         self._voices_cache.pop(ikey, None)
         self._core_cache.pop(ikey, None)
         self._counted_cache = None
+        self._generation += 1
 
     # ------------------------------------------------------------------ POST /challenges
     def handle_challenge(self, body, now, persist: Persist = None) -> tuple:
@@ -324,6 +327,7 @@ class Engine:
                 persist(ch.to_row())
             self._challenged.add(ch.ikey)
             self._counted_cache = None
+            self._generation += 1
         return 201, {"challenge_id": ch.challenge_id, "status": "under_review"}
 
     # ------------------------------------------------------------------ GET /lookup
@@ -465,6 +469,75 @@ class Engine:
                         out.append({"type": "NEW_TYPE", "pincode": p, "scam_type": key,
                                     "window": "24h", "count": len(group)})
             return 200, {"alerts": out}
+
+    # ------------------------------------------------------------------ GET /live/summary
+    def live_summary(self, now=None, days=None) -> tuple:
+        """The live scam map: areas, top scam types, most reported numbers and alerts in one reply.
+        An extra route for our own page, not part of the brief's API. Built only from counted
+        (clean) voices, at area level, so it carries nothing about any reporter. Cached for 10 s."""
+        now = ensure_aware(now)
+        days_n = _num(days, 7, 1, 30, int)
+        cfg = self.config
+        with self._lock:
+            key = days_n
+            cached = self._live_cache   # one rebuild per 10 s at most, however many pages poll it
+            if cached and cached[0] == key and 0 <= (now - cached[1]).total_seconds() < 10:
+                return 200, cached[2]
+            start, day_ago = now - timedelta(days=days_n), now - timedelta(hours=24)
+            areas, all_types, type_areas, total, last_24h = [], Counter(), defaultdict(set), 0, 0
+            for pin, cv in self._counted_by_area().items():
+                area = self.registry.areas.get(pin)
+                if area is None:
+                    continue
+                window = [c for c in cv if start < c.t <= now]
+                if not window:
+                    continue
+                types = Counter(c.scam_type for c in window)
+                recent = sum(1 for c in window if c.t > day_ago)
+                count = len(window)
+                total += count
+                last_24h += recent
+                for t, k in types.items():
+                    all_types[t] += k
+                    type_areas[t].add(pin)
+                areas.append({
+                    "pincode": pin, "locality": area.area, "city": area.city, "lat": area.lat, "lng": area.lng,
+                    "count": count, "last_24h": recent,
+                    "severity": "CRIT" if count >= 10 else "HIGH" if count >= 5 else "MED",
+                    "top_types": [{"scam_type": t, "count": k} for t, k in sorted(types.items(), key=lambda x: (-x[1], x[0]))[:3]],
+                })
+            areas.sort(key=lambda a: (-a["count"], a["pincode"]))
+            top_types = [{"scam_type": t, "count": k, "areas": len(type_areas[t])}
+                         for t, k in sorted(all_types.items(), key=lambda x: (-x[1], x[0]))[:6]]
+            # Most reported numbers: only ones that are KNOWN_SCAM now (3+ independent voices), so the
+            # full value may be shown; never verified or disputed ones.
+            known = []
+            for ikey, reports in self._reports.items():
+                if len(reports) < cfg.min_voices or self._excluded(ikey):
+                    continue
+                if not any(start < r.t <= now for r in reports):
+                    continue
+                voices, proven, _ = self._final(ikey)
+                n, points_q = trust.score(voices, proven, cfg)
+                if n < cfg.min_voices or points_q < cfg.min_points_q:
+                    continue
+                itype, canon = ikey.split(":", 1)
+                last = max(r.occurred_at for r in reports)
+                known.append((n, last, {
+                    "type": itype, "display_value": canon, "voices": n,
+                    "scam_type": _top_type([(v.first.scam_type, v.first.t) for v in voices]),
+                    "last_seen": iso_ist(day_floor_ist(last)),
+                }))
+            known.sort(key=lambda x: (-x[0], -x[1].timestamp()))
+            reply = {
+                "updated_at": iso_ist(now), "window_days": days_n,
+                "total": total, "last_24h": last_24h, "areas_active": len(areas), "known_numbers": len(known),
+                "top_types": top_types, "areas": areas,
+                "top_numbers": [k[2] for k in known[:5]],
+                "alerts": self.alerts(None, now)[1]["alerts"],
+            }
+            self._live_cache = (key, now, reply)
+            return 200, reply
 
     # ------------------------------------------------------------------ internals
     def _voices(self, ikey: str) -> list:
