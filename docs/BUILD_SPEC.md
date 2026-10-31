@@ -120,7 +120,7 @@ A lookup on a verified value is VERIFIED_BUSINESS whatever reports exist. Phones
 - Distance for `radius_km` is haversine between registry points. The query area is always in range. With no `pincode` on /map, return every area with reports.
 - The map point is always the registry point. No client coordinates are accepted, stored or returned.
 
-## 6. Trust rules v1.1 (the wedge; rows 1 and 2; 35 points). Built and tested: `app/engine/trust.py`
+## 6. Trust rules v1.2 (the wedge; rows 1 and 2; 35 points). Built and tested: `app/engine/trust.py` (v1.2 = v1.1 plus rule 7, config `76f35c12`)
 ### 6.1 In plain English (this is also the README text)
 1. Junk is turned away at the door: a number, UPI ID, link or sender that cannot exist, an area we do not know, or an impossible time.
 2. One person is one voice. Reports on one number are linked into one voice when they share a reporter ID (at any time), or a network within 24 hours (the brief: "many reports from the same internet connection within a short time count as one person").
@@ -128,6 +128,7 @@ A lookup on a verified value is VERIFIED_BUSINESS whatever reports exist. Phones
 4. Track record. A voice counts 1.0 when its reporter earlier reported a different number that at least two other voices confirmed (and that is not verified or disputed). Otherwise 0.5.
 5. Own words. A voice from one reporter with a note of 3 or more words counts in full. An empty or very short note counts half, and all of those together add at most 1.0. A linked group (rule 2 or 3) is one voice and adds no weight at all.
 6. A number is a KNOWN_SCAM when at least 3 voices report it and they add up to at least 1.5 points. Fewer is SUSPICIOUS. Nothing reported is NO_REPORTS. A verified number is VERIFIED_BUSINESS whatever is reported, and a disputed number is never KNOWN_SCAM.
+7. (v1.2, raised by the mentor at checkpoint 1: "one person asks 10 friends to report") A coordinated burst is one voice. When 8 or more voices with no track record come from ONE area within 6 hours (by occurred time) and make up at least 80% of all voices on the number, they merge into one linked voice: no weight, never on the map or in alerts. The number stays SUSPICIOUS and masked, and the app says why, until independent people (other areas, other days, or with a track record) report it. The count of people alone never decides.
 
 ### 6.2 Algorithm (identity = keyed hashes of `reporter_id` and `ip_prefix`; see 10)
 ```python
@@ -143,7 +144,12 @@ def voices(reports):                     # all reports of ONE identifier
 
 def proven(voice, X):                    # track record
     any rid in the voice reported Y != X EARLIER, Y not verified or disputed,
-    and len(voices(Y)) - 1 >= 2
+    and independent(Y) - 1 >= 2          # independent = voices with any burst on Y counted once
+
+def burst(X):                            # rule 7 (v1.2)
+    eligible = voices of X that are not proven
+    core = largest group of eligible voices with one first-report pincode within 6 h (occurred time)
+    if len(core) >= 8 and len(core) >= 0.8 * len(voices(X)): merge core into ONE linked voice
 
 def points(X):                           # integers in quarter-points: 4 = 1.0
     w = 4 if proven else 2
@@ -169,6 +175,7 @@ Note fingerprint (the note text is never stored): Unicode NFKC, lower case, keep
 | counted_generic_per_number | 1 | section 8 |
 | new_type_min_voices / new_type_personal_alone | 2 / yes | section 8 |
 | future_tolerance_minutes / max_age_days | 60 / 400 | section 5 |
+| ring_min_voices / ring_window_hours / ring_area_share | 8 / 6 / 0.8 | rule 7: burst size, window (occurred time only: a bulk upload resets the other clocks), share of all voices |
 
 ### 6.4 Results: in-process attack table on the real engine (`python -m tests.engine.scenarios --seeds 60 --compare`)
 60 seeds per row; each seed has 300 background reporters and 40 background numbers. The generators are our guesses about the judges' data, not the judges' tool, and the run is in-process, not over HTTP (T3's `make attack` is the black-box version).
@@ -200,17 +207,23 @@ Note fingerprint (the note text is never stored): Unicode NFKC, lower case, keep
 | 40 friends, notes picked from a list of 10 texts | 0% | 100% | 0 |
 | 3 attackers x 10 accounts, 3 networks, varied notes | 0% | 100% | 0 |
 | 40 friends report the verified bakery | 0% (VERIFIED_BUSINESS) | 0% | 0 |
-| 40 friends, own varied notes, 40 networks | 100% | 100% | known limit |
-| 40 friends, lightly reworded (up to 3 word swaps) | 100% | 100% | known limit |
+| 40 friends, own varied notes, 40 networks, one area | 0% (v1.2; v1.1: 100%) | 100% | 0 |
+| 40 friends, lightly reworded (up to 3 word swaps) | 0% (v1.2; v1.1: 100%) | 100% | 0 |
+| 1 person + 10 friends, own words, one area, 1 hour (v1.2) | 0% | 100% | 0 |
+| 12 new within 3 hours, across 6 areas (v1.2) | 100% | 100% | high |
+| 20 friends in one hour + 3 real people elsewhere (v1.2) | 100% | 100% | high |
+| 1 person + 10 friends, each picks another area (v1.2) | 100% | 100% | known limit |
 
-Alerts (15 seeds each, v1.1): planted jump (14 in the 7 days before, 10 today) SPIKE 100%; normal area (2 a day, 3 today) no alert 100%; no history and 5 today SPIKE 100%; new type with 3 people NEW_TYPE 100%; new type with 1 person in own words NEW_TYPE 100% (v1: 0%); type seen 10 days ago no NEW_TYPE 100%; 10 empty notes on one number no alert, on 10 numbers SPIKE, both 100%. Every trick above, placed in a quiet area with a scam type new to it, raised no alert in 100% of seeds, except 40 friends in their own varied words (a known limit). Map: 30- and 8-day-old reports off the 7-day map, 6-day-old on it, registry point used.
+v1.2 table: `tests/engine/ATTACK_TABLE.txt` (60 seeds, all rows PASS except the two known limits). Same table over HTTP on the mock server (`tests.blackbox.attack`): 0 failures, 0 rejected.
+
+Alerts (15 seeds each, v1.2): planted jump (14 in the 7 days before, 10 today) SPIKE 100%; normal area (2 a day, 3 today) no alert 100%; no history and 5 today SPIKE 100%; new type with 3 people NEW_TYPE 100%; new type with 1 person in own words NEW_TYPE 100% (v1: 0%); type seen 10 days ago no NEW_TYPE 100%; 10 empty notes on one number no alert, on 10 numbers SPIKE, both 100%. Every trick above, placed in a quiet area with a scam type new to it, raised no alert in 100% of seeds, now including 40 friends in their own varied words and 1 person + 10 friends. Map: 30- and 8-day-old reports off the 7-day map, 6-day-old on it, registry point used.
 These are not results from the judges' tool and not real-world accuracy. Quote them as "in our tests".
 
 ### 6.5 Known limits (say these out loud in the README; judges ask)
-- Many new accounts on different networks, each writing different words in their own voice, arriving together look exactly like a real wave. The brief itself defines a real wave that way. It is the main hole; only the verified list protects a listed business from it.
+- Many new accounts on different networks, each writing different words in their own voice, arriving together look exactly like a real wave. Rule 7 (v1.2) now holds such a burst when it comes from one area within 6 hours. Still open: a ring of 3 to 7, a ring whose members each pick a different area, or a ring spread over more than 6 hours. A real local wave of 8+ brand-new people in one area within 6 hours also waits (SUSPICIOUS, not KNOWN_SCAM) until independent reports arrive; the map and alerts do not count that burst either. Remedy for a wrongly listed business: the dispute route.
 - Lightly reworded copies (3 word swaps in an 18-word text) are not caught. Lowering the near-duplicate threshold would merge real victims who describe one campaign in similar words.
 - Real waves where every reporter left the note empty stay SUSPICIOUS: empty notes add at most 1.0.
-- A ring can build a track record by first reporting numbers that other ring members also report.
+- A ring can build a track record by first reporting numbers that other ring members also report (a burst no longer earns one: it counts as one voice there too, but a small ring of 3 to 7 can).
 - People behind one network prefix within 24 hours (a campus, carrier NAT, a family) count as one voice and add no weight.
 - Dials, only after one of OUR fair scenarios fails, and with the table re-run: (a) `min_points_q` 8 (2.0); (b) `neardup_jaccard` 0.6; (c) `note_link_min_reporters` 2 (costs real waves whose notes come from a short list: "4 new, notes from a list of 10" drops to 45%); (d) `new_type_personal_alone` false (if single reports cause noisy NEW_TYPE alerts in a rehearsal). Do not pre-apply any of them.
 
@@ -300,7 +313,7 @@ Mobile first at 360 to 414 px, no horizontal scroll. Light surfaces and one gree
 POST /challenges validates the identifier only (400 `invalid_identifier`). `claimant_name`, `contact_email` and `proof_note` are optional, trimmed to 100, 200 and 1000 characters, and never cause a 400 (a judge's challenge must not fail on a field check). It stores the challenge and replies 201 `{"challenge_id","status":"under_review"}`. A lookup of that value then shows `challenged: true`, the verdict is at most SUSPICIOUS, the value stays masked, and the value is excluded from map and alerts while the dispute is open. A verified value stays VERIFIED_BUSINESS with `challenged: true`. Resolving a dispute is FUTURE; say so. The app has a short form behind "Is this your number? Dispute".
 
 ## 13. Tests (write first; every row of section 0 has one)
-Black-box tests run against any base URL (`make smoke URL=...`), so the same suite checks local, Docker and the live server. Unit tests run the engine with a fake clock. Engine tests (E1, already passing): `python -m pytest tests/engine -q` gives 189 passed and 4 expected failures (the known limits in 6.5); `python -m tests.engine.scenarios` prints the in-process attack table in about 20 seconds.
+Black-box tests run against any base URL (`make smoke URL=...`), so the same suite checks local, Docker and the live server. Unit tests run the engine with a fake clock. Engine tests (E1, already passing): `python -m pytest tests/engine -q` gives 205 passed and 2 expected failures (the known limits in 6.5); `python -m tests.engine.scenarios` prints the in-process attack table in about 20 seconds.
 | ID | Given, when, then | Row |
 |---|---|---|
 | AT-1.1 | 40 friends (new IDs, 40 networks, same note, one hour) report the Fresh Bakes phone: lookup is VERIFIED_BUSINESS. Same on an unlisted number: not KNOWN_SCAM | 1 |
