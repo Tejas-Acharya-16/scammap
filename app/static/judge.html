@@ -134,6 +134,13 @@ a{color:var(--accent-text)}
         <div class="row"><input id="q" placeholder="Number, UPI ID, link or SMS sender" autocomplete="off"><button id="qBtn" class="btn small">Check</button></div>
         <div id="qOut"></div>
       </div>
+      <div class="card" id="verify">
+        <h3><span class="rowtag">Signed</span> Verify an answer</h3>
+        <p class="muted">This server signs every lookup answer (Ed25519). Look a value up and this browser checks the signature with tweetnacl. VALID proves which server said what and when, not that the verdict is right.</p>
+        <div class="row"><input id="vq" value="+91 90000 55501" placeholder="Number, UPI ID, link or SMS sender" autocomplete="off" aria-label="Value to look up and verify"><button id="vBtn" class="btn small">Look up and verify</button></div>
+        <div id="vOut"></div>
+        <button id="vTamper" class="btn alt small hidden">Tamper: flip the verdict</button>
+      </div>
       <div class="card" id="r7">
         <h3><span class="rowtag">Row 7</span> Demo and code</h3>
         <ul>
@@ -374,6 +381,74 @@ function setLang(l) { lang = l; try { localStorage.setItem("lang", l); } catch (
 $("l-en").onclick = () => setLang("en");
 $("l-hi").onclick = () => setLang("hi");
 
+// ------------------------------------------------------------------ signed answers: verify in this browser
+// The server signs every /lookup answer (Ed25519, app/attestation.py). This rebuilds the signed bytes
+// (every field but "sig", sorted keys, no spaces) and checks them with tweetnacl, loaded from cdnjs.
+let vKey = null, vAtt = null;
+const b64bytes = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const canonical = a => "{" + Object.keys(a).filter(k => k !== "sig").sort()
+  .map(k => JSON.stringify(k) + ":" + JSON.stringify(a[k])).join(",") + "}";
+async function sha256hex(bytes) {
+  if (!(window.crypto && crypto.subtle)) return null;              // only on https or localhost
+  const d = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(d)].map(x => x.toString(16).padStart(2, "0")).join("");
+}
+// [true, ""] valid · [false, why] invalid · [null, why] could not check
+async function checkSig(a) {
+  if (typeof nacl === "undefined" || !nacl.sign) return [null, "The verifier library (tweetnacl from cdnjs) did not load. Check it with tools/verify_attestation.py."];
+  if (!vKey) {
+    const r = await api("/attestation/key");
+    if (r.status !== 200 || !r.body || !r.body.public_key) return [null, "GET /attestation/key answered " + r.status];
+    vKey = r.body;
+  }
+  let pub, sig;
+  try { pub = b64bytes(vKey.public_key); sig = b64bytes(String(a.sig)); } catch (e) { return [false, "The signature is not valid base64."]; }
+  const kid = await sha256hex(pub);
+  if (kid !== null && kid.slice(0, 8) !== vKey.key_id) return [false, "The server's key does not match its key_id."];
+  if (a.key_id !== vKey.key_id) return [false, "Signed with another key, not this server's key " + vKey.key_id + "."];
+  if (a.v !== 1) return [false, "Unknown attestation version."];
+  const ok = pub.length === 32 && sig.length === 64 && nacl.sign.detached.verify(new TextEncoder().encode(canonical(a)), sig, pub);
+  return ok ? [true, ""] : [false, "The signature does not match these fields."];
+}
+function showAttestation(a, [ok, why], note) {
+  const tag = ok === true ? ["", "VALID"] : ok === false ? [" bad", "INVALID"] : [" idle", "NOT CHECKED"];
+  $("vOut").innerHTML = `<p><span id="vResult" class="tag${tag[0]}">${tag[1]}</span> <span class="muted">${esc(ok ? "Signature checked in this browser." : why)}</span></p>` +
+    (note ? `<p class="note">${esc(note)}</p>` : "") +
+    `<dl><dt>Verdict</dt><dd><span class="v v-${esc(a.verdict)}">${esc(a.verdict)}</span></dd>
+     <dt>Voices · reports</dt><dd>${esc(a.voices)} · ${esc(a.report_count)}</dd>
+     <dt>Issued</dt><dd class="mono">${esc(a.issued_at)}</dd>
+     <dt>Rules</dt><dd class="mono">${esc(a.config)}</dd>
+     <dt>Key</dt><dd class="mono">${esc(a.key_id)}</dd>
+     <dt>Value SHA-256</dt><dd class="mono">${esc(String(a.value_sha256).slice(0, 16))}…</dd></dl>`;
+}
+async function lookupAndVerify() {
+  const v = $("vq").value.trim();
+  if (!v) return;
+  vAtt = null;
+  $("vTamper").className = "btn alt small hidden";
+  $("vOut").innerHTML = '<p class="muted">…</p>';
+  let r;
+  try { r = await api(`/lookup?type=${encodeURIComponent(detect(v))}&value=${encodeURIComponent(v)}`); }
+  catch (e) { $("vOut").innerHTML = '<p class="muted">Network problem. Try again.</p>'; return; }
+  if (r.status !== 200 || !r.body || !r.body.attestation) {
+    $("vOut").innerHTML = `<p><b>${esc(r.status)}</b> ${esc((r.body && r.body.error) || "no signed answer")}</p>`;
+    return;
+  }
+  vAtt = r.body.attestation;
+  const res = await checkSig(vAtt);
+  showAttestation(vAtt, res);
+  if (res[0] === true) $("vTamper").className = "btn alt small";
+}
+async function tamper() {
+  if (!vAtt) return;
+  const forged = {...vAtt, verdict: vAtt.verdict === "KNOWN_SCAM" ? "NO_REPORTS" : "KNOWN_SCAM"};
+  showAttestation(forged, await checkSig(forged),
+    `Changed the verdict from ${vAtt.verdict} to ${forged.verdict} in this copy; the signature is the server's original.`);
+}
+$("vBtn").onclick = lookupAndVerify;
+$("vq").onkeydown = e => { if (e.key === "Enter") lookupAndVerify(); };
+$("vTamper").onclick = tamper;
+
 // ------------------------------------------------------------------ start
 paint();
 $("repo").href = REPO;
@@ -382,6 +457,7 @@ placeholders();
 pollLicence();
 setInterval(pollLicence, 5000);
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tweetnacl/1.0.3/nacl-fast.min.js" integrity="sha512-aLSwsdjU35MF6PERT7Pic3+X6qL7O+Us8hYQl/gjrPoV4JXUNoCF2Ys3/vfJSiBW1QNxz2WTr4tEo5VcOdHt/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" onload="drawQr()" onerror="document.getElementById('qr').style.display='none'"></script>
 </body>
 </html>
