@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Live Scam Map · Community Scam Map</title>
+<link rel="stylesheet" href="/static/theme.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+/* The live scam map. Shared look (colours, header, cards) is in /static/theme.css.
+   Data: GET /live/summary every 10 s. Area points only: never a person's location. */
+:root{--crit:#D2412D;--high:#E8754A;--med:#C98A00}
+body{background:var(--bg);color:var(--ink);margin:0}
+.wrap{max-width:1240px;margin:0 auto;padding:14px max(16px,env(safe-area-inset-left,0px)) 40px max(16px,env(safe-area-inset-right,0px))}
+.hero{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 18px;margin:6px 0 12px}
+.hero h1{margin:0;font-size:clamp(22px,4vw,30px);letter-spacing:-.02em;line-height:1.1}
+.hero h1 em{font-style:normal;color:var(--accent-text)}
+.hero p{margin:4px 0 0;color:var(--muted);font-size:14px;max-width:60ch}
+.live{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-text)}
+.live i{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 rgba(0,201,107,.6);animation:beat 1.6s infinite}
+.live.off{color:var(--warn-text)} .live.off i{background:var(--warn);animation:none}
+@keyframes beat{0%{box-shadow:0 0 0 0 rgba(0,201,107,.55)}70%{box-shadow:0 0 0 10px rgba(0,201,107,0)}100%{box-shadow:0 0 0 0 rgba(0,201,107,0)}}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;min-width:0}
+.stat b{display:block;font-size:22px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.stat span{display:block;color:var(--muted);font-size:12.5px;line-height:1.25}
+.stat.flash{animation:flash 1.2s ease}
+@keyframes flash{0%{background:var(--accent-soft)}100%{background:var(--surface)}}
+.grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:12px;align-items:start}
+.mapcard{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow)}
+#map{height:min(68vh,620px);min-height:360px;width:100%;background:var(--bg-2)}
+.maptools{position:absolute;z-index:500;top:10px;left:10px;display:flex;gap:6px}
+.maptools button{height:32px;padding:0 12px;border-radius:var(--pill);border:1px solid var(--line-2);background:var(--surface);font-weight:650;font-size:13px;color:var(--ink-2);cursor:pointer}
+.maptools button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.legend{position:absolute;z-index:500;bottom:10px;left:10px;display:flex;gap:10px;flex-wrap:wrap;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:var(--r-sm);padding:6px 10px;font-size:12px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.side{display:flex;flex-direction:column;gap:12px;min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px;min-width:0}
+.card h2{margin:0 0 10px;font-size:15px;letter-spacing:-.01em;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.card h2 small{font-weight:500;color:var(--muted);font-size:12px}
+.bars{display:flex;flex-direction:column;gap:9px}
+.bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;font-size:13.5px}
+.bar .nm{min-width:0;overflow-wrap:anywhere}
+.bar .ct{font-variant-numeric:tabular-nums;font-weight:700}
+.bar .tr{grid-column:1/3;height:8px;border-radius:var(--pill);background:var(--bg-2);overflow:hidden}
+.bar .tr i{display:block;height:100%;border-radius:var(--pill);background:var(--accent);transition:width .6s ease}
+.bar .sub{grid-column:1/3;color:var(--muted);font-size:12px}
+.alert{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
+.alert:first-of-type{border-top:0;padding-top:0}
+.tag{flex:none;font-family:var(--mono);font-size:10.5px;font-weight:800;letter-spacing:.08em;padding:3px 7px;border-radius:6px;color:#fff;background:var(--crit)}
+.tag.nt{background:var(--med)}
+.num{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;padding:9px 0;border-top:1px solid var(--line);font-size:13px}
+.num:first-of-type{border-top:0;padding-top:0}
+.num code{font-family:var(--mono);font-size:13.5px;font-weight:700;overflow-wrap:anywhere;min-width:0}
+.num .vc{color:#fff;background:var(--crit);border-radius:var(--pill);padding:2px 8px;font-size:11.5px;font-weight:700;align-self:start;white-space:nowrap}
+.num .sub{grid-column:1/3;color:var(--muted)}
+.empty{color:var(--muted);font-size:13.5px;margin:0}
+.note{color:var(--muted);font-size:12px;margin:10px 2px 0}
+.pin{position:relative}
+.pin .ring{position:absolute;inset:0;border-radius:50%;border:2px solid var(--crit);animation:ring 1.8s ease-out infinite}
+@keyframes ring{0%{transform:scale(.6);opacity:.9}100%{transform:scale(1.9);opacity:0}}
+.plus{font-family:var(--font);font-weight:800;font-size:13px;color:var(--crit);text-shadow:0 1px 0 #fff;animation:rise 2.4s ease-out forwards;white-space:nowrap}
+@keyframes rise{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-26px);opacity:0}}
+.leaflet-tooltip{font-family:var(--font);font-size:12.5px;border-radius:10px;padding:8px 10px;box-shadow:var(--shadow)}
+.leaflet-tooltip b{font-size:13.5px}
+#fallback{display:none;width:100%;height:100%}
+#expired{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(12,42,33,.92);color:#fff;text-align:center;padding:24px}
+#expired.hidden{display:none}
+#expired p{font-size:20px;font-weight:700;margin:0 0 6px}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)} #map{height:52vh;min-height:300px} .stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (prefers-reduced-motion:reduce){.live i,.pin .ring,.plus,.stat.flash{animation:none}}
+</style>
+</head>
+<body>
+<div class="strip"><div class="in"><b data-t="stripA">Anonymous by design</b> <span data-t="stripB">· no login, no name, no phone number asked</span></div></div>
+<header class="site"><div class="in">
+  <a class="brand" href="/" aria-label="Community Scam Map"><span class="mk" aria-hidden="true"></span><span class="wm"><b>Community <span>Scam Map</span></b><small data-t="tag">Report · check · anonymous</small></span></a>
+  <nav class="sitenav" aria-label="Main"><a href="/#check" data-t="tCheck">Check</a><a href="/#report" data-t="tReport">Report</a><a href="/#area" data-t="tArea">My area</a><a class="nl on" href="/live" aria-current="page"><span class="lg" data-t="tLive">Live map</span><span class="sm" data-t="tLiveS">Map</span></a><a class="nj" href="/judge"><span class="lg" data-t="tJudge">Judge console</span><span class="sm" data-t="tJudgeS">Judge</span></a></nav>
+  <div class="tools"><span id="licPill" class="pill" role="status"><i></i><span class="pl-w" data-t="licW">Licence</span><span id="licTxt">…</span></span><span class="lang"><button id="l-en" class="on">EN</button><button id="l-hi">हिन्दी</button></span></div>
+</div></header>
+<div class="wrap">
+  <section class="hero">
+    <div>
+      <h1><span data-t="h1a">Live scam map:</span> <em data-t="h1b">what is being reported now</em></h1>
+      <p data-t="lead">Reports from the last 7 days, grouped by area. Fake campaigns and repeat reports are left out, so every dot is independent people.</p>
+    </div>
+    <span id="live" class="live" aria-live="polite"><i></i><span id="liveTxt">…</span></span>
+  </section>
+  <div class="stats">
+    <div class="stat" id="s-total"><b>–</b><span data-t="sTotal">reports this week</span></div>
+    <div class="stat" id="s-day"><b>–</b><span data-t="sDay">in the last 24 hours</span></div>
+    <div class="stat" id="s-areas"><b>–</b><span data-t="sAreas">areas with reports</span></div>
+    <div class="stat" id="s-known"><b>–</b><span data-t="sKnown">numbers confirmed by 3+ people</span></div>
+  </div>
+  <div class="grid">
+    <div class="mapcard">
+      <div id="map" role="img" aria-label="Map of areas with scam reports"><svg id="fallback" aria-hidden="true"></svg></div>
+      <div class="maptools"><button id="v-blr" class="on" data-t="vBlr">Bengaluru</button><button id="v-ind" data-t="vInd">India</button></div>
+      <div class="legend"><span><i style="background:var(--crit)"></i><span data-t="sevC">Critical</span></span><span><i style="background:var(--high)"></i><span data-t="sevH">High</span></span><span><i style="background:var(--med)"></i><span data-t="sevM">Medium</span></span></div>
+    </div>
+    <div class="side">
+      <div class="card"><h2><span data-t="topH">Top scams this week</span><small id="topSub"></small></h2><div id="top" class="bars"><p class="empty">…</p></div></div>
+      <div class="card"><h2><span data-t="alH">Alerts now</span><small data-t="alSub">last 24 hours</small></h2><div id="alerts"><p class="empty">…</p></div></div>
+      <div class="card"><h2><span data-t="numH">Most reported numbers</span><small data-t="numSub">3+ independent people</small></h2><div id="nums"><p class="empty">…</p></div>
+        <p class="note" data-t="numNote">Shown in full only after 3 different people reported them. A business can dispute a listing.</p></div>
+    </div>
+  </div>
+  <p class="note" data-t="foot">Area centre points only. We never store or show where a person is. Map data © OpenStreetMap contributors, tiles © CARTO.</p>
+</div>
+<div id="expired" class="hidden"><div><p>Licence expired. Contact your provider.</p><div>लाइसेंस समाप्त हो गया है। अपने प्रदाता से संपर्क करें।</div></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const S = {
+  en: {tag:"Report · check · anonymous", tCheck:"Check", tReport:"Report", tArea:"My area", tLive:"Live map", tLiveS:"Map", tJudge:"Judge console", tJudgeS:"Judge",
+       stripA:"Anonymous by design", stripB:"· no login, no name, no phone number asked", licW:"Licence", licOk:"valid", licExp:"expired", licBad:"not valid",
+       h1a:"Live scam map:", h1b:"what is being reported now",
+       lead:"Reports from the last 7 days, grouped by area. Fake campaigns and repeat reports are left out, so every dot is independent people.",
+       sTotal:"reports this week", sDay:"in the last 24 hours", sAreas:"areas with reports", sKnown:"numbers confirmed by 3+ people",
+       vBlr:"Bengaluru", vInd:"India", sevC:"Critical", sevH:"High", sevM:"Medium",
+       topH:"Top scams this week", alH:"Alerts now", alSub:"last 24 hours", numH:"Most reported numbers", numSub:"3+ independent people",
+       numNote:"Shown in full only after 3 different people reported them. A business can dispute a listing.",
+       foot:"Area centre points only. We never store or show where a person is. Map data © OpenStreetMap contributors, tiles © CARTO.",
+       live:"Live", updated:"updated", offline:"Reconnecting…", noTop:"No reports in the last 7 days yet.", noAlerts:"Nothing unusual right now.",
+       noNums:"No number has 3 independent reports this week.", areasN:"{n} areas", areas1:"1 area", wk:"this week", day:"last 24 h",
+       spike:"Sudden jump in {a}: {n} reports today, usually {b} a day", newType:"New kind of scam in {a}: {t}",
+       reportedBy:"Reported by {n} people · {t} · last {d}", topIn:"Top here"},
+  hi: {tag:"रिपोर्ट · जाँच · गुमनाम", tCheck:"जाँचें", tReport:"रिपोर्ट करें", tArea:"मेरा इलाका", tLive:"लाइव नक्शा", tLiveS:"नक्शा", tJudge:"जज कंसोल", tJudgeS:"जज",
+       stripA:"डिज़ाइन से गुमनाम", stripB:"· न लॉगिन, न नाम, न फ़ोन नंबर", licW:"लाइसेंस", licOk:"मान्य", licExp:"समाप्त", licBad:"अमान्य",
+       h1a:"लाइव स्कैम नक्शा:", h1b:"अभी किसकी रिपोर्ट हो रही है",
+       lead:"पिछले 7 दिनों की रिपोर्ट, इलाके के हिसाब से। नकली अभियान और दोहराई गई रिपोर्ट हटा दी जाती हैं, इसलिए हर बिंदु अलग-अलग लोगों की रिपोर्ट है।",
+       sTotal:"इस हफ़्ते की रिपोर्ट", sDay:"पिछले 24 घंटे में", sAreas:"इलाकों से रिपोर्ट", sKnown:"नंबर, 3+ लोगों ने पुष्टि की",
+       vBlr:"बेंगलुरु", vInd:"भारत", sevC:"गंभीर", sevH:"उच्च", sevM:"मध्यम",
+       topH:"इस हफ़्ते के मुख्य स्कैम", alH:"अभी के अलर्ट", alSub:"पिछले 24 घंटे", numH:"सबसे ज़्यादा रिपोर्ट किए गए नंबर", numSub:"3+ अलग लोग",
+       numNote:"पूरा नंबर तभी दिखता है जब 3 अलग लोगों ने रिपोर्ट किया हो। कोई व्यवसाय आपत्ति दर्ज कर सकता है।",
+       foot:"सिर्फ़ इलाके का केंद्र। हम किसी व्यक्ति की जगह न रखते हैं, न दिखाते हैं। नक्शा डेटा © OpenStreetMap योगदानकर्ता, टाइल © CARTO।",
+       live:"लाइव", updated:"अपडेट", offline:"फिर से जुड़ रहे हैं…", noTop:"पिछले 7 दिनों में अभी कोई रिपोर्ट नहीं।", noAlerts:"अभी कुछ असामान्य नहीं।",
+       noNums:"इस हफ़्ते किसी नंबर की 3 अलग रिपोर्ट नहीं हैं।", areasN:"{n} इलाके", areas1:"1 इलाका", wk:"इस हफ़्ते", day:"पिछले 24 घंटे",
+       spike:"{a} में अचानक बढ़ोतरी: आज {n} रिपोर्ट, आमतौर पर रोज़ {b}", newType:"{a} में नए तरह का स्कैम: {t}",
+       reportedBy:"{n} लोगों ने रिपोर्ट किया · {t} · आख़िरी {d}", topIn:"यहाँ सबसे ज़्यादा"}
+};
+const KIND = {"digital-arrest":["👮","Digital arrest","डिजिटल अरेस्ट"],"fake-kyc-link":["🔗","KYC link","KYC लिंक"],"upi-refund-qr":["💸","Refund QR","रिफंड QR"],
+  "investment-group":["📈","Investment","निवेश"],"courier-customs":["📦","Courier","कूरियर"],"job-offer":["💼","Job offer","नौकरी"],"lottery-prize":["🎁","Lottery","लॉटरी"],
+  "loan-app-harassment":["📱","Loan app","लोन ऐप"],"electricity-disconnection":["💡","Power cut SMS","बिजली कटौती"],"fake-customer-care":["☎️","Customer care","कस्टमर केयर"],
+  "otp-call":["🔢","OTP call","OTP कॉल"],"sextortion":["🎥","Blackmail","ब्लैकमेल"],"other":["❔","Other","अन्य"]};
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store = {get(k){try{return localStorage.getItem(k)}catch(e){return null}}, set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+let lang = store.get("lang") === "hi" ? "hi" : "en";
+const t = (k, v) => { let s = (S[lang] && S[lang][k]) || S.en[k] || k; if (v) for (const [a, b] of Object.entries(v)) s = s.split("{" + a + "}").join(b); return s; };
+const kind = k => { const x = KIND[k] || KIND.other; return x[0] + " " + (lang === "hi" ? x[2] : x[1]); };
+const fmt = n => Number(n || 0).toLocaleString(lang === "hi" ? "hi-IN" : "en-IN");
+const day = s => { try { return new Date(s).toLocaleDateString(lang === "hi" ? "hi-IN" : "en-IN", {day: "numeric", month: "short", timeZone: "Asia/Kolkata"}); } catch (e) { return String(s).slice(0, 10); } };
+const COLORS = {CRIT: "#D2412D", HIGH: "#E8754A", MED: "#C98A00"};
+let data = null, prev = {}, map = null, layer = null, view = "blr", fitted = false;
+
+function render() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-t]").forEach(e => e.textContent = t(e.dataset.t));
+  $("l-en").className = lang === "en" ? "on" : ""; $("l-hi").className = lang === "hi" ? "on" : "";
+  if (data) paint(data, false);
+}
+function setLang(l) { lang = l; store.set("lang", l); render(); }
+$("l-en").onclick = () => setLang("en"); $("l-hi").onclick = () => setLang("hi");
+
+// ------------------------------------------------------------------ map
+function initMap() {
+  if (!window.L) { $("fallback").style.display = "block"; return; }
+  map = L.map("map", {zoomControl: true, attributionControl: true, scrollWheelZoom: false}).setView([12.95, 77.62], 11);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+    maxZoom: 18, subdomains: "abcd", referrerPolicy: "strict-origin-when-cross-origin",
+    attribution: "&copy; OpenStreetMap contributors &copy; CARTO"}).addTo(map);
+  layer = L.layerGroup().addTo(map);
+}
+function areaTip(a) {
+  const types = (a.top_types || []).map(x => esc(kind(x.scam_type)) + " (" + fmt(x.count) + ")").join("<br>");
+  return "<b>" + esc(a.locality) + "</b>, " + esc(a.city) + "<br>" + fmt(a.count) + " " + esc(t("wk")) + " · " + fmt(a.last_24h) + " " + esc(t("day")) +
+         (types ? "<br><span style='color:#5D6963'>" + esc(t("topIn")) + ":</span><br>" + types : "");
+}
+function drawMap(d, animate) {
+  const areas = d.areas || [];
+  if (!map) { drawFallback(areas); return; }
+  layer.clearLayers();
+  const alertPins = new Set((d.alerts || []).map(x => x.pincode));
+  for (const a of areas) {
+    const r = Math.min(34, 7 + 4.2 * Math.sqrt(a.count));
+    const c = COLORS[a.severity] || COLORS.MED;
+    L.circleMarker([a.lat, a.lng], {radius: r, color: c, weight: 2, fillColor: c, fillOpacity: .32})
+      .bindTooltip(areaTip(a), {direction: "top", sticky: true}).addTo(layer);
+    if (alertPins.has(a.pincode) || a.last_24h > 0) {
+      const s = Math.round(r * 2);
+      L.marker([a.lat, a.lng], {interactive: false, keyboard: false,
+        icon: L.divIcon({className: "pin", iconSize: [s, s], html: "<span class='ring' style='border-color:" + c + "'></span>"})}).addTo(layer);
+    }
+    const before = prev[a.pincode];
+    if (animate && before != null && a.count > before) {
+      L.marker([a.lat, a.lng], {interactive: false, keyboard: false,
+        icon: L.divIcon({className: "", iconSize: [60, 20], iconAnchor: [30, r + 18], html: "<span class='plus'>+" + (a.count - before) + "</span>"})}).addTo(layer);
+    }
+  }
+  if (!fitted && areas.length) { fitView(); fitted = true; }
+}
+function fitView() {
+  if (!map || !data) return;
+  const pts = (data.areas || []).filter(a => view === "ind" || a.city === "Bengaluru").map(a => [a.lat, a.lng]);
+  if (view === "blr" && !pts.length) { map.setView([12.95, 77.62], 11); return; }
+  if (!pts.length) { map.setView([21.5, 79], 5); return; }
+  map.fitBounds(L.latLngBounds(pts).pad(view === "ind" ? .25 : .35), {maxZoom: 13});
+}
+$("v-blr").onclick = () => { view = "blr"; $("v-blr").className = "on"; $("v-ind").className = ""; fitView(); };
+$("v-ind").onclick = () => { view = "ind"; $("v-ind").className = "on"; $("v-blr").className = ""; fitView(); };
+function drawFallback(areas) {
+  // No map library (offline): plot area centres on a plain grid. Still area points only.
+  const svg = $("fallback"), W = svg.clientWidth || 600, H = svg.clientHeight || 400;
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  const pts = areas.filter(a => view === "ind" || a.city === "Bengaluru");
+  if (!pts.length) { svg.innerHTML = ""; return; }
+  const la = pts.map(a => a.lat), lo = pts.map(a => a.lng), pad = 64;
+  const [la0, la1, lo0, lo1] = [Math.min(...la), Math.max(...la), Math.min(...lo), Math.max(...lo)];
+  const x = v => pad + (lo1 === lo0 ? .5 : (v - lo0) / (lo1 - lo0)) * (W - 2 * pad);
+  const y = v => pad + (la1 === la0 ? .5 : (la1 - v) / (la1 - la0)) * (H - 2 * pad);
+  svg.innerHTML = pts.map(a => { const r = Math.min(30, 6 + 4 * Math.sqrt(a.count)), c = COLORS[a.severity] || COLORS.MED;
+    return "<circle cx='" + x(a.lng) + "' cy='" + y(a.lat) + "' r='" + r + "' fill='" + c + "' fill-opacity='.3' stroke='" + c + "' stroke-width='2'></circle>" +
+           "<text x='" + x(a.lng) + "' y='" + (y(a.lat) + r + 14) + "' text-anchor='middle' font-size='12' fill='#27312C'>" + esc(a.locality) + "</text>"; }).join("");
+}
+
+// ------------------------------------------------------------------ side panels
+function paint(d, animate) {
+  const stat = (id, v, old) => { const el = $(id); el.querySelector("b").textContent = fmt(v);
+    if (animate && old != null && v !== old) { el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); } };
+  stat("s-total", d.total, data && animate ? prevStats.total : null);
+  stat("s-day", d.last_24h, data && animate ? prevStats.last_24h : null);
+  stat("s-areas", d.areas_active, data && animate ? prevStats.areas_active : null);
+  stat("s-known", d.known_numbers, data && animate ? prevStats.known_numbers : null);
+  const top = d.top_types || [], max = Math.max(1, ...top.map(x => x.count));
+  $("topSub").textContent = top.length ? fmt(d.total) + " · " + t("wk") : "";
+  $("top").innerHTML = top.length ? top.map(x => "<div class='bar'><span class='nm'>" + esc(kind(x.scam_type)) + "</span><span class='ct'>" + fmt(x.count) + "</span>" +
+      "<span class='tr'><i style='width:" + Math.round(100 * x.count / max) + "%'></i></span><span class='sub'>" + esc(x.areas === 1 ? t("areas1") : t("areasN", {n: fmt(x.areas)})) + "</span></div>").join("")
+    : "<p class='empty'>" + esc(t("noTop")) + "</p>";
+  const name = p => { const a = (d.areas || []).find(z => z.pincode === p); return a ? a.locality : p; };
+  const al = d.alerts || [];
+  $("alerts").innerHTML = al.length ? al.map(x => x.type === "SPIKE"
+      ? "<div class='alert'><span class='tag'>SPIKE</span><span>" + esc(t("spike", {a: name(x.pincode), n: fmt(x.count), b: x.baseline_per_day})) + "</span></div>"
+      : "<div class='alert'><span class='tag nt'>NEW</span><span>" + esc(t("newType", {a: name(x.pincode), t: kind(x.scam_type)})) + "</span></div>").join("")
+    : "<p class='empty'>" + esc(t("noAlerts")) + "</p>";
+  const nums = d.top_numbers || [];
+  $("nums").innerHTML = nums.length ? nums.map(x => "<div class='num'><code>" + esc(x.display_value) + "</code><span class='vc'>" + fmt(x.voices) + "</span>" +
+      "<span class='sub'>" + esc(t("reportedBy", {n: fmt(x.voices), t: kind(x.scam_type), d: day(x.last_seen)})) + "</span></div>").join("")
+    : "<p class='empty'>" + esc(t("noNums")) + "</p>";
+  drawMap(d, animate);
+}
+let prevStats = {};
+async function poll() {
+  try {
+    const r = await fetch("/live/summary?days=7", {cache: "no-store"});
+    let body = null; try { body = await r.json(); } catch (e) {}
+    if (r.status === 403 && body && body.error === "LICENSE_EXPIRED") { $("expired").className = ""; setLive(false); return; }
+    if (r.status !== 200 || !body) { setLive(false); return; }
+    $("expired").className = "hidden";
+    const animate = !!data;
+    if (data) { prevStats = {total: data.total, last_24h: data.last_24h, areas_active: data.areas_active, known_numbers: data.known_numbers};
+                prev = Object.fromEntries((data.areas || []).map(a => [a.pincode, a.count])); }
+    data = body;
+    paint(body, animate);
+    setLive(true, body.updated_at);
+  } catch (e) { setLive(false); }
+}
+function setLive(ok, at) {
+  $("live").className = ok ? "live" : "live off";
+  $("liveTxt").textContent = ok ? t("live") + " · " + t("updated") + " " + new Date(at).toLocaleTimeString(lang === "hi" ? "hi-IN" : "en-IN", {hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Kolkata"}) : t("offline");
+}
+async function licence() {
+  try {
+    const b = await (await fetch("/license", {cache: "no-store"})).json();
+    const ok = b.valid === true || b.status === "valid";
+    $("licPill").className = "pill " + (ok ? "ok" : "bad");
+    $("licTxt").textContent = ok ? t("licOk") : (b.status === "expired" ? t("licExp") : t("licBad"));
+    if (ok) $("expired").className = "hidden";
+  } catch (e) {}
+}
+initMap();
+render();
+licence(); poll();
+setInterval(poll, 10000);
+setInterval(licence, 10000);
+</script>
+</body>
+</html>

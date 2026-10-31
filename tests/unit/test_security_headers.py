@@ -11,7 +11,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 EXPECTED = {
     "content-security-policy": ("default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
-                                "style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; "
+                                "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+                                "img-src 'self' data: https://*.basemaps.cartocdn.com; connect-src 'self'; "
                                 "frame-ancestors 'none'; base-uri 'none'; form-action 'self'"),
     "x-content-type-options": "nosniff",
     "referrer-policy": "no-referrer",
