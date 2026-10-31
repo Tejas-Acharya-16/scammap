@@ -41,9 +41,15 @@ def test_reply_keys_are_aggregate_only(registry):
         e.handle_report(body(identifier_value="+91 90000 77777", note=f"distinct note number {i} " * 3), NOW)
     _, r = e.lookup("phone", "+91 90000 77777", NOW)
     assert set(r) <= {"verdict", "report_count", "distinct_reporters", "first_seen", "last_seen", "scam_type",
-                      "display_value", "evidence", "challenged", "type", "label", "trust"}
+                      "display_value", "evidence", "challenged", "type", "label", "trust", "ai_watchdog"}
     for item in r["evidence"]:
         assert set(item) == {"occurred_at", "channel", "scam_type", "pincode"}
+    # The AI watchdog's opinion (added 1 Nov): a score, a level and phrases from a fixed list only.
+    from app.engine.watchdog import SIGNALS
+    a = r["ai_watchdog"]
+    assert set(a) == {"coordinated", "level", "signals", "signal_codes", "model", "advisory"}
+    assert set(a["signals"]) <= {p for pair in SIGNALS.values() for p in pair}
+    assert "distinct note" not in _dump(a)
 
 
 def test_hashes_depend_on_the_secret_salt(registry):
