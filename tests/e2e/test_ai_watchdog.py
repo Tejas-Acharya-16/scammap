@@ -49,15 +49,15 @@ def test_check_card_shows_the_ai_opinion_and_its_reasons(base_url, api, new_page
     page = new_page()
     page.goto(base_url + "/#check")
     check(page, RING)
-    ai = page.locator("#result .ai")
-    assert ai.get_attribute("data-ai") == "high"
+    ai = page.locator("#result .wd")
+    assert ai.get_attribute("data-wd") == "high"
     text = ai.inner_text()
     assert "AI watchdog: these reports look coordinated" in text and "not the AI" in text
     assert ai.locator("li").count() >= 1
     assert "SUSPICIOUS" in page.locator("#result .verdict").get_attribute("class")
     check(page, REAL)
-    assert page.locator("#result .ai").get_attribute("data-ai") == "low"
-    assert "independent reports" in page.locator("#result .ai").inner_text()
+    assert page.locator("#result .wd").get_attribute("data-wd") == "low"
+    assert "independent reports" in page.locator("#result .wd").inner_text()
     wide = page.evaluate("() => document.documentElement.scrollWidth - document.documentElement.clientWidth")
     assert wide <= 0, f"page is {wide}px too wide"
     assert "scammer" not in page.content().lower() and "fraud" not in page.content().lower()
@@ -68,6 +68,6 @@ def test_ai_opinion_in_hindi(base_url, api, new_page):
     page = new_page("hi")
     page.goto(base_url + "/#check")
     check(page, RING)
-    text = page.locator("#result .ai").inner_text()
+    text = page.locator("#result .wd").inner_text()
     assert "AI निगरानी" in text
     assert "वही लोग या नेटवर्क बार-बार रिपोर्ट कर रहे हैं" in text      # the top reason, translated

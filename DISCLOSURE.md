@@ -45,21 +45,28 @@ or earlier hackathons.
 - The reference tables in `app/data` (areas, the verified list, scam types, channels) come from the data
   tables in the organisers' brief and are used as data files, as the event rules allow. The shops in the
   verified list are the organisers' made-up test businesses.
+- The message reader's training data, `tools/ai/messages.jsonl` (591 messages), and its 10 held-out test messages
+  (`tests/unit/data/ai_heldout.jsonl`) were written by Claude Code during the event. They are synthetic: `+91 90000`
+  numbers, `.example` links, made-up UPI IDs, banks and shops. No real message and no third-party dataset.
+  The model is trained by our own code (`tools/ai/train_reader.py`, standard library only). No pre-trained model,
+  and no library in the browser: `app/static/ai/reader.js` is written for this project.
 
 ## AI tools
 
 They helped us write code, tests and documents. None of them runs inside the product: every verdict comes
 from deterministic code, and no outside model is called while the server answers a request.
 
-One model of our own does run inside the product: the **AI watchdog** (`app/engine/watchdog.py`). It is a
-logistic regression with 15 weights (`app/data/watchdog_model.json`) that we wrote and trained during the
-event with `tools/train_watchdog.py`, on our own synthetic simulator only, with the Python standard library.
-No third-party model, dataset or ML library. It is not an LLM, it is advisory only, and it never sets,
-raises or lowers a verdict.
+The product has two small models of its own, both written and trained during the event on synthetic data
+only, and both advisory: neither sets, raises or lowers a verdict, and neither is an LLM.
+
+- The **AI watchdog** (`app/engine/watchdog.py`, on the server): a logistic regression with 15 weights
+  (`app/data/watchdog_model.json`), trained with `tools/train_watchdog.py` on our own attack simulator, with
+  the Python standard library. It adds an opinion on whether a number's reports look coordinated.
+- The **on-device message reader** (see Data): it runs in the browser and only suggests a kind of scam.
 
 | Tool | What it helped with |
 |---|---|
 | Claude (claude.ai chat, Anthropic) | Planning, the trust engine and its tests (`app/engine`, `tests/engine`), the judge console sandbox, the AI watchdog (model code, attack simulator, training script), reviews, the security review |
-| Claude Code (Anthropic) | Server, licence, deployment, CI, web app changes, Playwright tests |
+| Claude Code (Anthropic) | Server, licence, deployment, CI, web app changes, Playwright tests, the on-device message reader and its synthetic messages |
 | Google Antigravity (with the Claude and Gemini models it offers) | README, Docker files, the demo seed script, the video script |
 | OpenAI Codex | Black-box tests: live attack table, live lookup and privacy checks, input variants |
