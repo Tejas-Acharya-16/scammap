@@ -141,8 +141,9 @@ const AREAS=[["560102","HSR Layout","Bengaluru"],["560038","Indiranagar","Bengal
 const $=id=>document.getElementById(id);
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
 let lang=store.get("lang")||"en",qType=null,rType=null,channel=(CH.find(c=>c[0]===store.get("channel"))||CH[0])[0],whenSel="now",kind="other",doneSeq=0,lastCheck=null,lastDone=null;
-const t=(k,v={})=>(S[lang][k]||S.en[k]||k).replace(/\{(\w)\}/g,(_,x)=>v[x]??"");
-const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+// Every API or user value that goes into innerHTML passes through esc(). Static strings need none.
+const esc=s=>String(s??"").replace(/[&<>"'`]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;","`":"&#96;"}[c]));
+const t=(k,v={})=>(S[lang][k]||S.en[k]||k).replace(/\{(\w)\}/g,(_,x)=>esc(v[x]));   // parameters are values: escaped here, once
 const uuid=()=>(crypto.randomUUID?crypto.randomUUID():"r"+Math.random().toString(16).slice(2)+Date.now().toString(16));
 function rid(){let r=store.get("rid");if(!r){r="r_"+uuid();store.set("rid",r)}return r}
 function detect(v){v=(v||"").trim();if(!v)return null;if(/^upi:\/\//i.test(v)||/^[^\s@]+@[a-z0-9]+$/i.test(v))return"upi";
@@ -165,11 +166,11 @@ function render(){document.documentElement.lang=lang;document.title=t("title");d
  for(const id of["parea","aarea"]){const cur=$(id).value||store.get("area")||"560102";$(id).innerHTML=AREAS.map(([p,a,c])=>`<option value="${p}">${a}, ${c}</option>`).join("");$(id).value=cur}
  typeChips($("qtype"),qType,k=>qType=k);typeChips($("rtype"),rType,k=>rType=k)}
 function cardHTML(b){const n=b.distinct_reporters;
- const sent=b.trust&&b.trust.hold?t("sBurst",{n:b.report_count}):b.verdict==="KNOWN_SCAM"?t("sKNOWN",{n}):b.verdict==="SUSPICIOUS"?t("sSUSP",{n,p:n===1?t("person"):t("people")}):b.verdict==="NO_REPORTS"?t("sNONE"):t("sVER",{l:esc(b.label||"")});
+ const sent=b.trust&&b.trust.hold?t("sBurst",{n:b.report_count}):b.verdict==="KNOWN_SCAM"?t("sKNOWN",{n}):b.verdict==="SUSPICIOUS"?t("sSUSP",{n,p:n===1?t("person"):t("people")}):b.verdict==="NO_REPORTS"?t("sNONE"):t("sVER",{l:b.label||""});
  const adv=b.scam_type?(TYPES.find(a=>a[0]===b.scam_type)||TYPES[12])[lang==="hi"?4:3]:"";
- return `<span class="verdict v-${b.verdict}">${t(b.verdict)}</span><div class="mono">${esc(b.display_value)}</div><div><b>${sent}</b></div>
- ${b.challenged?`<div class="muted">${t("review")}</div>`:""}${b.last_seen?`<div class="muted">${t("last")}: ${fmtDay(b.last_seen)}${b.scam_type?" · "+tname(b.scam_type):""}</div>`:""}
- ${adv&&b.verdict!=="VERIFIED_BUSINESS"?`<div class="advice">${adv}</div>`:""}`}
+ return `<span class="verdict v-${esc(b.verdict)}">${esc(t(b.verdict))}</span><div class="mono">${esc(b.display_value)}</div><div><b>${sent}</b></div>
+ ${b.challenged?`<div class="muted">${t("review")}</div>`:""}${b.last_seen?`<div class="muted">${t("last")}: ${esc(fmtDay(b.last_seen))}${b.scam_type?" · "+esc(tname(b.scam_type)):""}</div>`:""}
+ ${adv&&b.verdict!=="VERIFIED_BUSINESS"?`<div class="advice">${esc(adv)}</div>`:""}`}
 async function check(value,type){const v=(value||"").trim();if(!v)return;const ty=type||detect(v);lastCheck=null;
  $("result").innerHTML='<div class="card muted">…</div>';
  let r;try{r=await api(`/lookup?type=${encodeURIComponent(ty)}&value=${encodeURIComponent(v)}`)}catch(e){$("result").innerHTML=`<div class="card err" data-t="net">${t("net")}</div>`;return}
@@ -203,7 +204,7 @@ async function loadArea(){const pin=$("aarea").value;store.set("area",pin);
  const [m,a]=await Promise.all([api(`/map?pincode=${pin}&days=7&radius_km=5`),api(`/alerts?pincode=${pin}`)]);
  const name=p=>(AREAS.find(x=>x[0]===p)||[p,p])[1];
  $("alerts").innerHTML=(a.body.alerts||[]).length?a.body.alerts.map(x=>x.type==="SPIKE"?`<p class="err">${t("spike",{c:x.count,b:x.baseline_per_day})}</p>`:`<p class="err">${t("newtype",{t:tname(x.scam_type)})}</p>`).join(""):t("none");
- $("clusters").innerHTML=(m.body.clusters||[]).length?m.body.clusters.map(c=>`<div class="cluster"><span>${name(c.pincode)} · ${tname(c.top_scam_type)}</span><span><b>${c.count}</b> <span class="sev ${c.severity}">${t("sev"+c.severity)}</span></span></div>`).join(""):`<p class="muted">${t("noClusters")}</p>`}
+ $("clusters").innerHTML=(m.body.clusters||[]).length?m.body.clusters.map(c=>`<div class="cluster"><span>${esc(name(c.pincode))} · ${esc(tname(c.top_scam_type))}</span><span><b>${esc(c.count)}</b> <span class="sev ${esc(c.severity)}">${esc(t("sev"+c.severity))}</span></span></div>`).join(""):`<p class="muted">${t("noClusters")}</p>`}
 function tab(k){document.querySelectorAll("nav button").forEach(b=>b.className=b.dataset.tab===k?"on":"");["check","report","area"].forEach(s=>$(s).className=s===k?"":"hidden");if(k==="area")loadArea();
  if(k==="report"){typeChips($("rtype"),rType,x=>rType=x);if(!$("rdone").classList.contains("hidden"))again();else if(!$("rv").value)$("rv").focus()}}
 function showExpired(on){$("expired").className=on?"":"hidden"}

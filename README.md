@@ -184,6 +184,8 @@ curl -X POST $URL/license -H 'content-type: application/json' --data @lic5.json
 
 ## Privacy
 
+Security notes (what we protect, how, what is open by design, known limits): see [SECURITY.md](SECURITY.md).
+
 ### What is stored per report
 
 Report ID, identifier type and normalised value, `occurred_at`, `reported_at`, hashed reporter identity (`rid`), hashed network prefix (`org`), channel, scam type, pincode, note hash, note shingle hashes, word count, `has_screenshot`, `amount_lost_inr`, server receive time.

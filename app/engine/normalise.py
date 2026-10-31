@@ -132,6 +132,10 @@ _SCHEME_RE = re.compile(r"^([a-z][a-z0-9+\-]*):", re.I)
 _BAD_SCHEMES = frozenset({"javascript", "data", "mailto", "file", "ftp", "tel", "sms", "intent",
                           "vbscript", "blob", "about", "chrome", "upi", "content"})
 _LABEL_RE = re.compile(r"^[a-z0-9¡-￿](?:[a-z0-9¡-￿\-]{0,61}[a-z0-9¡-￿])?$")
+# Unicode categories that cannot be part of a host name a person reads: control, format (direction marks and
+# overrides), surrogate, private use, unassigned, line and paragraph separators, spaces. Letters, digits and
+# combining marks of every script stay valid.
+_HOST_REFUSED = frozenset({"Cc", "Cf", "Cs", "Co", "Cn", "Zl", "Zp", "Zs"})
 _DEFANG_RE = re.compile(r"\[\.\]|\(\.\)|\[dot\]|\(dot\)", re.I)
 
 
@@ -169,14 +173,40 @@ def _url(raw: object) -> str:
             raise InvalidIdentifier("url")
         host_out = host if ip.version == 4 else f"[{host}]"
     else:
+        if any(unicodedata.category(ch) in _HOST_REFUSED for ch in host):
+            raise InvalidIdentifier("url")   # direction overrides, separators, private use, lone surrogates
         labels = host.split(".")
         if (host == "localhost" or host.endswith(".localhost") or len(labels) < 2
                 or labels[-1].isdigit() or not all(_LABEL_RE.match(x) for x in labels)):
             raise InvalidIdentifier("url")
         host_out = host
-    path = parts.path.lower().rstrip("/")
+    path = _encode_path(parts.path.lower().rstrip("/"))
     netloc = host_out if port in (None, 80, 443) else f"{host_out}:{port}"
     return f"https://{netloc}{path}"
+
+
+# RFC 3986 path characters (unreserved, sub-delims, ":" "@" "/") minus the apostrophe, which is a
+# sub-delim but also closes an HTML attribute. Everything else is percent-encoded as UTF-8 so that
+# nothing in a stored link can open or close an HTML tag or attribute (stored XSS, layer a).
+_PATH_SAFE = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~!$&()*+,;=:@/")
+_HEX = frozenset("0123456789abcdefABCDEF")
+
+
+def _encode_path(path: str) -> str:
+    out = []
+    i, n = 0, len(path)
+    while i < n:
+        ch = path[i]
+        if ch == "%" and i + 2 < n and path[i + 1] in _HEX and path[i + 2] in _HEX:
+            out.append("%" + path[i + 1:i + 3].upper())   # a valid triplet stays, in one case
+            i += 3
+            continue
+        if ch in _PATH_SAFE:
+            out.append(ch)
+        else:                                              # "%" alone, markup, non-ASCII, controls
+            out.extend("%%%02X" % b for b in ch.encode("utf-8", "replace"))
+        i += 1
+    return "".join(out)
 
 
 def url_host(canon: str) -> str:
