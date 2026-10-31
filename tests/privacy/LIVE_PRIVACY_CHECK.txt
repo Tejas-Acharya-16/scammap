@@ -1,0 +1,15 @@
+Community Scam Map live privacy check
+Timestamp: 2026-10-31T23:19:00+05:30 IST
+Target host: scammap-yp1k.onrender.com
+Synthetic data only. /admin/reset was not called.
+Raw reporter IDs, network prefix, note, and canary values are not written to this report.
+
+Synthetic report 1: HTTP 201
+Synthetic report 2: HTTP 201
+Unused-number candidates checked: 1
+Lookup: HTTP 200; report_count=2; distinct_reporters=1; masked with at most 2 reporters=PASS
+Map: HTTP 200; clusters=0; area-level fields only=PASS
+Alerts: HTTP 200; alerts=0
+Canary values absent from every response: PASS
+
+Overall: PASS
