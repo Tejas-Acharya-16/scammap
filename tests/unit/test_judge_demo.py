@@ -111,3 +111,11 @@ def test_live_summary_route(client):
     assert client.post("/live/summary").status_code == 405
     install_expired(client)
     assert client.get("/live/summary").status_code == 403
+
+
+def test_live_page_is_served_even_when_the_licence_is_expired(client):
+    r = client.get("/live")
+    assert r.status_code == 200 and "Live scam map" in r.text and "/live/summary" in r.text
+    install_expired(client)
+    assert client.get("/live").status_code == 200          # page loads and shows the expired screen
+    assert client.get("/live/summary").status_code == 403  # its data is gated
