@@ -28,16 +28,21 @@ class Phone:
         self.page, self.steps = page, []
 
     def on_screen(self, selector) -> bool:
-        box = self.page.locator(selector).bounding_box()
-        height = self.page.viewport_size["height"]
-        return box is not None and box["y"] >= 0 and box["y"] + box["height"] <= height
+        """Fully inside the screen and not covered by anything (such as the sticky Post bar)."""
+        return self.page.locator(selector).evaluate("""e => {
+            const r = e.getBoundingClientRect();
+            if (r.top < 0 || r.bottom > innerHeight + 0.5) return false;
+            const hit = document.elementFromPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2);
+            return !!hit && (e === hit || e.contains(hit));
+        }""")
 
     def _reachable(self, selector):
-        assert self.on_screen(selector), f"{selector} is off screen: a person would have to scroll"
+        assert self.on_screen(selector), \
+            f"{selector} is off screen or covered: a person would have to scroll"
 
     def scroll_to(self, selector, what):
-        if not self.on_screen(selector):
-            self.page.locator(selector).scroll_into_view_if_needed()
+        if not self.on_screen(selector):  # a person scrolls it into clear view, not to the very edge
+            self.page.locator(selector).evaluate("e => e.scrollIntoView({block: 'center'})")
             self.steps.append("scroll to " + what)
 
     def tap(self, selector, what):
