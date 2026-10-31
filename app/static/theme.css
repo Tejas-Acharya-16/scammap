@@ -70,6 +70,8 @@ a{color:var(--accent-text);text-underline-offset:3px}
 .sitenav>.nj{flex:0 0 auto;padding:0 14px}
 .sitenav>button.on,.sitenav>a.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .sitenav .lg{display:none}
+/* Phones: the header scrolls away with the page, so it never sits over a form field (and the form gets the room) */
+@media (max-width:899px){.site{position:static}}
 @media (min-width:900px){
   .strip{display:block}
   .site .in{grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"brand nav tools";padding:12px 24px;gap:24px}
