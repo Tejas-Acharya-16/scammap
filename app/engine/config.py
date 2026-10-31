@@ -46,6 +46,13 @@ class TrustConfig:
     ring_window_hours: float = 6.0          # by occurred time (the only clock a bulk upload keeps)
     ring_area_share: float = 0.8            # the burst must be at least this share of all voices
 
+    # --- v1.3: notes never block an honest report. A test tool may send empty notes or one example
+    # sentence for every real report; 3 different people on their own networks, spread over time, must
+    # still make a number KNOWN_SCAM. Notes only count against reports that arrive close together.
+    generic_full_weight: bool = True        # an unlinked voice weighs the same with or without own words
+    note_link_window_hours: Optional[float] = 6.0  # shared text links writers only inside this window (occurred time)
+    ring_generic_any_area: bool = True      # a burst of empty-note voices merges even when spread over areas
+
     # --- Map and alerts (section 8) ---------------------------------------------
     exclude_linked_from_counts: bool = True  # voices that link 2+ reporter IDs never move map or alerts
     copy_paste_mutes_counts: bool = True     # a number hit by pasted text never moves map or alerts
@@ -84,6 +91,9 @@ V1_CONFIG = TrustConfig(
     linked_cap_q=None,
     copy_paste_mutes_counts=False,
     ring_min_voices=None,
+    generic_full_weight=False,
+    note_link_window_hours=None,
+    ring_generic_any_area=False,
     proven_requires_earlier=False,
     exclude_linked_from_counts=False,
     spam_reports=10**9,
