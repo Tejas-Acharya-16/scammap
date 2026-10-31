@@ -117,7 +117,7 @@ The rules above decide every verdict, so anyone can audit an answer. They are al
 
 **What it is.** A logistic regression over 15 aggregate features of the stored reports (`app/engine/watchdog.py`), with its 15 weights in `app/data/watchdog_model.json`. Every feature points towards "coordinated", and training keeps every weight at zero or above, so no signal can count the wrong way: copied text can never make reports look more independent. It is not an LLM and calls nothing outside the server.
 
-**How it learned.** `python tools/train_watchdog.py` (standard library only, about 35 seconds) builds 120 synthetic worlds and plants 7,200 numbers in them, half planted campaigns and half real waves. In each world, attackers choose each disguise separately: enough accounts or a few reused ones, aged accounts, one network or a proxy per report, patience over days, backdated calls, one area or a different area each, and pasted, reworded, canned, empty or original text. Real waves vary just as much: 3 to 50 people, over 1 hour to 2 weeks, in one area or anywhere, in their own words, with templates, with empty notes or with one example sentence. Both sides draw their size from the same range, so the number of reports says nothing, and the model never sees it.
+**How it learned.** `python tools/train_watchdog.py` (standard library only, about 35 seconds) builds 120 synthetic worlds and plants 7,200 numbers in them, about half planted campaigns and half real waves. In each world, attackers choose each disguise separately: enough accounts or a few reused ones, aged accounts, one network or a proxy per report, patience over days, backdated calls, one area or a different area each, and pasted, reworded, canned, empty or original text. Real waves vary just as much: 3 to 50 people, over 1 hour to 2 weeks, in one area or anywhere, in their own words, with templates, with empty notes or with one example sentence. Both sides draw their size from the same range, so the number of reports says nothing, and the model never sees it.
 
 **Guardrails.**
 - It runs after the verdict, from stored reports only. A test and a judge-console check look up every number again with the watchdog switched off: the answers are identical apart from this one field.
@@ -294,7 +294,7 @@ python -m pytest tests/engine -q
 # Everything except the browser tests (336 passed, 2 known limits)
 python -m pytest tests -q --ignore=tests/e2e
 
-# Browser tests at phone size (27 passed; first run: python -m playwright install chromium)
+# Browser tests at phone size (29 passed; first run: python -m playwright install chromium)
 python -m pytest tests/e2e -q
 
 # In-process attack table (60 seeds, ~20 seconds)

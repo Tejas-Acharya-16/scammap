@@ -30,9 +30,10 @@ textarea{min-height:48px;resize:vertical}
 .chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
 .app .mono{font-size:17px;margin:10px 0 6px;letter-spacing:-.01em;overflow-wrap:anywhere}
 .advice{background:var(--amber-soft);border:1px solid var(--amber-line);border-radius:12px;padding:10px 12px;margin-top:12px;font-size:14px;color:#5B3B00}
-.ai{border:1px dashed var(--line-2);border-radius:12px;padding:10px 12px;margin-top:12px;font-size:14px;color:var(--ink-2)}
+.ai{border:1px solid var(--line);border-left:4px solid var(--line-2);border-radius:12px;padding:10px 12px;margin-top:12px;font-size:14px;color:var(--ink-2);background:var(--bg-2)}
 .ai b{color:var(--ink)}.ai ul{margin:6px 0 0;padding-left:18px}.ai li{margin:2px 0}
-.ai.high{border-style:solid;border-color:var(--amber-line);background:var(--amber-soft)}
+.ai .tag{display:inline-block;font:700 11px/18px var(--mono);padding:0 6px;border-radius:6px;background:var(--ink);color:#fff;margin-right:6px;vertical-align:1px}
+.ai.high{border-left-color:var(--amber)}
 .app .card>b:first-child{display:block;font-size:15px;margin-bottom:6px}
 .cluster{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding:10px 0}
 .cluster:last-child{border-bottom:0}
@@ -206,7 +207,7 @@ const AI_HI={"linked_share+":"वही लोग या नेटवर्क �
 "dup_text_share-":"हर रिपोर्ट में अलग शब्द","short_span-":"रिपोर्ट लंबे समय में फैली हुई","backdated-":"रिपोर्ट कॉल के आसपास ही दर्ज हुई"};
 function aiHTML(a){if(!a||a.coordinated==null)return"";const p=Math.round(a.coordinated*100);const k=a.level==="high"?"aiHigh":a.level==="medium"?"aiMed":"aiLow";
  const why=(a.signals||[]).map((s,i)=>"<li>"+esc(lang==="hi"&&AI_HI[(a.signal_codes||[])[i]]||s)+"</li>").join("");
- return `<div class="ai${a.level==="high"?" high":""}" data-ai="${esc(a.level)}"><b>${t(k,{p})}</b>${why?"<ul>"+why+"</ul>":""}</div>`}
+ return `<div class="ai${a.level==="high"?" high":""}" data-ai="${esc(a.level)}"><span class="tag">AI</span><b>${t(k,{p})}</b>${why?"<ul>"+why+"</ul>":""}</div>`}
 function cardHTML(b){const n=b.distinct_reporters;
  const sent=b.trust&&b.trust.hold?t("sBurst",{n:b.report_count}):b.verdict==="KNOWN_SCAM"?t("sKNOWN",{n}):b.verdict==="SUSPICIOUS"?t("sSUSP",{n,p:n===1?t("person"):t("people")}):b.verdict==="NO_REPORTS"?t("sNONE"):t("sVER",{l:b.label||""});
  const adv=b.scam_type?(TYPES.find(a=>a[0]===b.scam_type)||TYPES[12])[lang==="hi"?4:3]:"";
