@@ -128,7 +128,7 @@ curl -X POST $URL/reports -H 'content-type: application/json' -d '{"report_id":"
 curl "$URL/lookup?type=phone&value=9000000042"     # "report_count":1
 
 # 2. Install the expired licence. Every API route answers 403 {"error":"LICENSE_EXPIRED"},
-#    and the app (open $URL in a browser) shows "Licence expired. Contact your provider." within 10 s.
+#    and the app (open $URL in a browser) shows "Licence expired. Contact your provider." at its next check (every 10 s).
 curl -X POST $URL/license -H 'content-type: application/json' --data @licenses/expired.json   # "status":"expired"
 for r in "lookup?type=phone&value=9000000042" "map?pincode=560102" "alerts?pincode=560102"; do
   curl -s -o /dev/null -w "GET /$r -> %{http_code}\n" "$URL/$r"; done
@@ -137,7 +137,7 @@ for r in reports challenges demo/run; do
 curl $URL/health                                   # still 200: /health and /license stay open
 
 # 3. Install the long licence. The API is back at once, with no restart and the same data;
-#    the app clears the expired screen within 10 s (it checks every 10 s).
+#    the app clears the expired screen at its next check, within 15 s.
 curl -X POST $URL/license -H 'content-type: application/json' --data @licenses/long.json      # "status":"valid"
 curl "$URL/lookup?type=phone&value=9000000042"     # 200, "report_count":1 as in step 1
 
