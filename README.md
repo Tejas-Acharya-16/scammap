@@ -4,7 +4,12 @@ Report and verify scams in seconds, anonymously.
 
 **Live:** <https://scammap-yp1k.onrender.com> (opens on Report; <https://scammap-yp1k.onrender.com/#check> opens Check)
 **Judge console:** <https://scammap-yp1k.onrender.com/judge>
-Judge console: /judge runs every scoring check on a sandbox copy of the engine.
+
+One website, two pages, one look:
+
+- **The app (`/`)**: Check, Report and My area, on a phone or a laptop. English and हिन्दी, icons for every choice, no login, no name, no phone number asked. On a laptop a side panel explains the trust rules and links to the judge console.
+- **The judge console (`/judge`)**: one button runs every scoring check on a fresh sandbox copy of the engine (never the live data); read-only checks of the live API; the licence panel (upload `licenses/expired.json` to lock, `licenses/long.json` to unlock, no restart); a QR code that opens the app on your phone.
+- Security notes: [SECURITY.md](SECURITY.md). Libraries, services and AI tools: [DISCLOSURE.md](DISCLOSURE.md).
 
 ---
 
@@ -212,13 +217,27 @@ One line per request: time, method, path (without the query string), status, dur
 
 All results below are from our own synthetic data and generators. They are not from the judges' tool and do not represent results on unknown data. We quote them as "in our tests".
 
-**Live run:** the attack scenarios sent over HTTP to the live server (31 Oct 2026, 21:48 IST, 2 seeds, 1,677 reports, 0 failures, 2 known limits): [tests/attack/LIVE_ATTACK_TABLE.txt](tests/attack/LIVE_ATTACK_TABLE.txt).
+### Live proof (on the https server, synthetic data)
+
+| What | Result | Output |
+|---|---|---|
+| Attack scenarios over HTTP (engine v1.2, commit `d141030`, 31 Oct 21:48 IST) | 1,677 reports, 0 rejected, 0 failures, 2 known limits | [tests/attack/LIVE_ATTACK_TABLE.txt](tests/attack/LIVE_ATTACK_TABLE.txt) |
+| Lookup formats and speed (31 Oct 23:17 IST) | 4 ways of writing one number give one answer; p95 216 ms on new connections, 107 ms on a kept-open connection, from our laptop | [tests/api/LIVE_LOOKUP_CHECK.txt](tests/api/LIVE_LOOKUP_CHECK.txt) |
+| Privacy canaries (31 Oct 23:21 IST) | No canary value in any reply; the number stays masked | [tests/privacy/LIVE_PRIVACY_CHECK.txt](tests/privacy/LIVE_PRIVACY_CHECK.txt) |
+| Bulk upload, 2,000 reports, 16 connections, no retries (1 Nov 01:55 IST) | 2,000 accepted, 0 × 429, 0 × 5xx, 0 timeouts; lookups during the upload p95 582 ms on the free instance | [tests/api/LIVE_BULK_LOAD.txt](tests/api/LIVE_BULK_LOAD.txt) |
+| Realistic input variants (in process) | 31 of 31 accepted | [tests/api/INPUT_VARIANTS.txt](tests/api/INPUT_VARIANTS.txt) |
 
 ### Test commands
 
 ```bash
-# Engine unit tests (205 passed, 2 known limits)
+# Engine tests (256 passed, 2 known limits)
 python -m pytest tests/engine -q
+
+# Everything except the browser tests (307 passed, 2 known limits)
+python -m pytest tests -q --ignore=tests/e2e
+
+# Browser tests at phone size (25 passed; first run: python -m playwright install chromium)
+python -m pytest tests/e2e -q
 
 # In-process attack table (60 seeds, ~20 seconds)
 python -m tests.engine.scenarios --seeds 60 --compare
