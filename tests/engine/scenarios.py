@@ -81,10 +81,12 @@ class World:
 
     def __init__(self, rng, config):
         self.rng = rng
+        self.used = set()
         self.engine = Engine(REGISTRY, salt="scenario-salt-0001", config=config)
 
     def report(self, number, when, pin, typ, note, rid, prefix, reported=None, itype="phone"):
         rng = self.rng
+        self.used.add(number)
         if reported is None:
             reported = min(when + timedelta(minutes=rng.randint(5, 90)), NOW)
         body = {
@@ -113,7 +115,10 @@ class World:
 def scenario(world, name):
     """Plants one scenario on a fresh target number and returns that number."""
     rng = world.rng
-    target, pin, typ = new_number(rng), rng.choice(AREAS), rng.choice(TYPES)
+    target = new_number(rng)
+    while target in world.used:              # a fresh number: never one another scenario reported
+        target = new_number(rng)
+    pin, typ = rng.choice(AREAS), rng.choice(TYPES)
     add = lambda when, note, rid, prefix, reported=None: world.report(
         target, when, pin, typ, note, rid, prefix, reported)
     spread = lambda: NOW - rng.uniform(0.5, 13) * D
@@ -214,6 +219,22 @@ def scenario(world, name):
         note = free_note(rng)
         for _ in range(40):
             world.report(target, burst(), "560038", "fake-customer-care", note, new_rid(rng), new_prefix(rng))
+    elif name == "F16":                      # checkpoint 1: one person asks 10 friends
+        for _ in range(11):
+            add(NOW - rng.uniform(0, 1) * H, free_note(rng), new_rid(rng), new_prefix(rng))
+    elif name == "F17":                      # the same ring, but each friend picks a different area
+        for p in rng.sample(AREAS, 11):
+            world.report(target, NOW - rng.uniform(0, 1) * H, p, typ, free_note(rng),
+                         new_rid(rng), new_prefix(rng))
+    elif name == "R14":                      # a real wave: many new people, many areas, same morning
+        for p in [a for a in rng.sample(AREAS, 6) for _ in range(2)]:
+            world.report(target, NOW - rng.uniform(0, 3) * H, p, typ, free_note(rng),
+                         new_rid(rng), new_prefix(rng))
+    elif name == "R15":                      # a ring, plus 3 real people on other days and areas
+        for _ in range(20):
+            add(NOW - rng.uniform(0, 1) * H, free_note(rng), new_rid(rng), new_prefix(rng))
+        for p in rng.sample([a for a in AREAS if a != pin], 3):
+            world.report(target, spread(), p, typ, free_note(rng), new_rid(rng), new_prefix(rng))
     elif name == "F14":
         prefix = new_prefix(rng)
         for _ in range(22):
@@ -238,6 +259,8 @@ LOOKUP_ROWS = [
     ("R11", "8 new, 4 of them on 2 shared networks, days apart", "high", False),
     ("R12", "7 new, notes picked from a list of 10 sample texts", "high", False),
     ("R13", "4 new, notes picked from a list of 10 sample texts", "high", False),
+    ("R14", "12 new within 3 hours, across 6 areas", "high", False),
+    ("R15", "20 friends in one hour + 3 real people elsewhere", "high", False),
     ("R6", "8 new, all empty notes", "high", True),
     ("R9", "2 new, own words (must stay SUSPICIOUS)", "low", False),
     ("F1", "40 friends, same note, 40 networks", "0", False),
@@ -253,8 +276,10 @@ LOOKUP_ROWS = [
     ("F15", "40 friends, notes picked from a list of 10 texts", "0", False),
     ("F9", "3 attackers x 10 accounts, 3 networks, varied notes", "0", False),
     ("F13", "40 friends report the verified bakery", "0", False),
-    ("F4", "40 friends, own varied notes, 40 networks", "0", True),
-    ("F3", "40 friends, lightly reworded (up to 3 word swaps)", "0", True),
+    ("F16", "1 person + 10 friends, own words, one area, 1 hour", "0", False),
+    ("F4", "40 friends, own varied notes, 40 networks, one area", "0", False),
+    ("F3", "40 friends, lightly reworded (up to 3 word swaps)", "0", False),
+    ("F17", "1 person + 10 friends, each picks another area", "0", True),
 ]
 
 
@@ -380,7 +405,7 @@ ALERT_ROWS = [
     ("empty-10-on-one-number", "10 empty notes, one number", "none"),
     ("empty-10-on-10-numbers", "10 empty notes, 10 numbers", "SPIKE"),
 ]
-TRICKS = ["F1", "F2", "F5", "F6", "F14", "F7", "F8", "F10", "F11", "F12", "F15", "F9", "F13", "F4"]
+TRICKS = ["F1", "F2", "F5", "F6", "F14", "F7", "F8", "F10", "F11", "F12", "F15", "F9", "F13", "F16", "F4", "F3"]
 
 
 def alert_ok(want, alerts):
@@ -420,7 +445,7 @@ def main(argv=None):
     ap.add_argument("--seeds", type=int, default=60)
     ap.add_argument("--compare", action="store_true", help="also run the v1 rules")
     args = ap.parse_args(argv)
-    configs = [("v1.1", TrustConfig())] + ([("v1", V1_CONFIG)] if args.compare else [])
+    configs = [("v1.2", TrustConfig())] + ([("v1", V1_CONFIG)] if args.compare else [])
     results = {label: run_lookup_table(cfg, args.seeds) for label, cfg in configs}
     print(f"Lookup scenarios, {args.seeds} seeds each. Rate = share of seeds where the target was KNOWN_SCAM.")
     head = f"{'Scenario':<52} {'Want':<5}" + "".join(f" {label + ' rate':>10} {label + ' result':>13}" for label, _ in configs)
@@ -432,7 +457,7 @@ def main(argv=None):
         for label, _ in configs:
             rate, susp = results[label][name]
             verdict = judge(want, rate, susp, limit)
-            failures += label == "v1.1" and verdict == "FAIL"
+            failures += label == "v1.2" and verdict == "FAIL"
             line += f" {rate * 100:9.0f}% {verdict:>13}"
         print(line)
     print()
@@ -440,7 +465,7 @@ def main(argv=None):
     print(f"Alert scenarios, {a_seeds} seeds each. Rate = share of seeds with the wanted result.")
     tables = {label: run_alert_table(cfg, a_seeds) for label, cfg in configs}
     print(f"{'Scenario':<66} {'Want':<12}" + "".join(f" {label:>6}" for label, _ in configs))
-    for i, (desc, want, _) in enumerate(tables["v1.1"]):
+    for i, (desc, want, _) in enumerate(tables["v1.2"]):
         line = f"{desc:<66} {want:<12}"
         for label, _ in configs:
             line += f" {tables[label][i][2] * 100:5.0f}%"

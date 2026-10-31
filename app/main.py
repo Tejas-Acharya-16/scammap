@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import re
+import threading
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -17,11 +18,13 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import BigInteger, Boolean, Column, Integer, MetaData, Table, Text, create_engine, select, delete
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app import demo
 from app.engine import Engine, Registry
 from app.license import LicenseState, EXEMPT_PATHS, STATIC_PREFIX
 
@@ -169,6 +172,12 @@ MAX_BODY_BYTES = 64 * 1024  # 64 KiB request body limit
 
 REGISTRY = Registry.from_dir(Path(__file__).parent / "data")
 INDEX_HTML = Path(__file__).parent / "static" / "index.html"
+JUDGE_HTML = Path(__file__).parent / "static" / "judge.html"
+PAGES = frozenset({"/", "/judge"})  # served on GET only; exempt from the licence gate
+
+# Which deploy is answering (headers on /health)
+COMMIT = os.environ.get("RENDER_GIT_COMMIT", "dev")[:7]
+STARTED_AT = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 # Engine needs TRUST_SALT; fail fast if missing (unless testing with a default).
 if not TRUST_SALT:
@@ -291,9 +300,9 @@ class LicenseGateMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
-        # Exempt: /health, /license (GET and POST), the app page (GET / only), static files
+        # Exempt: /health, /license (GET and POST), the app pages (GET / and /judge only), static files
         if (path in EXEMPT_PATHS or path.startswith(STATIC_PREFIX + "/")
-                or (path == "/" and request.method == "GET")):
+                or (path in PAGES and request.method == "GET")):
             return await call_next(request)
 
         now = clock.now()
@@ -342,9 +351,15 @@ def index():
     return FileResponse(INDEX_HTML, media_type="text/html")
 
 
+@app.get("/judge")
+def judge():
+    # Judge console. Exempt from the licence gate like "/".
+    return FileResponse(JUDGE_HTML, media_type="text/html")
+
+
 @app.get("/health")
 def health():
-    return {"ok": True}
+    return JSONResponse({"ok": True}, headers={"X-Commit": COMMIT, "X-Started": STARTED_AT})
 
 
 @app.get("/license")
@@ -416,3 +431,26 @@ def admin_reset():
     app.state.db.delete_reports_and_challenges()
     ENGINE.reset()
     return {"ok": True}
+
+
+_DEMO_LOCK = threading.Lock()  # one sandbox run at a time
+
+
+@app.post("/demo/run")
+async def demo_run(request: Request):
+    # Judge console checks in a sandbox engine (app/demo.py): never the live data or the DB.
+    # Optional {"seed": int}; a bad or empty body counts as {}.
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    seed = body.get("seed") if isinstance(body, dict) else None
+    if not isinstance(seed, int) or isinstance(seed, bool):
+        seed = None
+    if not _DEMO_LOCK.acquire(blocking=False):
+        return JSONResponse({"error": "busy"}, status_code=429)
+    try:
+        result = await run_in_threadpool(demo.run, REGISTRY, ENGINE.config, seed)
+    finally:
+        _DEMO_LOCK.release()
+    return JSONResponse(result)

@@ -10,6 +10,9 @@
    confirmed number. Generic voices (empty, short or shared text) count half, and all of
    them together add at most 1.0.
 4. KNOWN_SCAM needs at least 3 voices and at least 1.5 points.
+5. (v1.2) A coordinated burst, many brand-new voices from ONE area within a few hours that make up
+   most of the voices on the number, counts as ONE linked voice. One signal alone (the number of
+   people) never decides; time, area and track record must agree.
 Map and alerts count only clean voices: one reporter, not spamming, and either own words
 or the earliest generic voice of that identifier.
 """
@@ -29,6 +32,7 @@ class Voice:
     personal: bool      # own words from one reporter
     first: object       # earliest report: sets the voice's date, area and scam type
     copy_paste: bool = False  # this identifier has pasted text shared by several reporters
+    burst: int = 0            # v1.2: this voice is a coordinated burst of this many voices
 
 
 def build_voices(reports, cfg) -> list:
@@ -162,6 +166,55 @@ def score(voices, proven, cfg) -> tuple:
     if cfg.linked_cap_q is not None:
         linked_q = min(linked_q, cfg.linked_cap_q)
     return len(voices), personal_q + min(generic_q + linked_q, cfg.generic_cap_q)
+
+
+def burst_core(voices, cfg, eligible=None) -> list:
+    """A coordinated burst (v1.2): the largest group of voices whose first reports come from ONE area
+    within `ring_window_hours` of each other. Returned (as indices) only when the group has at least
+    `ring_min_voices` voices AND makes up at least `ring_area_share` of all voices on the identifier,
+    so a big real wave that also hits other areas or other days is left alone. `eligible` (a list of
+    bools) limits who can be in the group: the engine passes "no track record"."""
+    if cfg.ring_min_voices is None or len(voices) < cfg.ring_min_voices:
+        return []
+    window = timedelta(hours=cfg.ring_window_hours)
+    by_area = defaultdict(list)
+    for i, v in enumerate(voices):
+        if eligible is None or eligible[i]:
+            by_area[v.first.pincode].append((v.first.t, v.first.report_id, i))
+    best = []
+    for pin in sorted(by_area):
+        seq = sorted(by_area[pin])
+        lo = 0
+        for hi in range(len(seq)):
+            while seq[hi][0] - seq[lo][0] > window:
+                lo += 1
+            if hi - lo + 1 > len(best):
+                best = [i for _, _, i in seq[lo:hi + 1]]
+    if len(best) < cfg.ring_min_voices or len(best) < cfg.ring_area_share * len(voices):
+        return []
+    return sorted(best)
+
+
+def merge_burst(voices, proven, core) -> tuple:
+    """The burst counts as ONE coordinated voice, like a linked group: it adds no weight and never
+    moves the map or alerts. Voices outside the burst (other areas, other days, track record) still
+    count on their own. Returns (voices, proven), sorted by time."""
+    if not core:
+        return voices, proven
+    members = [voices[i] for i in core]
+    merged = Voice(
+        reports=tuple(r for v in members for r in v.reports),
+        rids=frozenset().union(*(v.rids for v in members)),
+        linked=True, spam=False, personal=False,
+        first=min((v.first for v in members), key=lambda r: (r.t, r.report_id)),
+        copy_paste=any(v.copy_paste for v in members),
+        burst=len(members),
+    )
+    inside = set(core)
+    pairs = [(v, p) for i, (v, p) in enumerate(zip(voices, proven)) if i not in inside]
+    pairs.append((merged, False))
+    pairs.sort(key=lambda vp: (vp[0].first.t, vp[0].first.report_id))
+    return [v for v, _ in pairs], [p for _, p in pairs]
 
 
 def counted_voices(voices, cfg) -> list:

@@ -109,7 +109,20 @@ user agent, locality text, coordinates. `tests/engine/test_privacy.py` checks th
 
 ## Commands
 ```
-python -m pytest tests/engine -q              # 189 tests + 4 known limits (xfail)
+python -m pytest tests/engine -q              # 205 tests + 2 known limits (xfail)
 python -m tests.engine.scenarios --seeds 60   # the attack table (add --compare for v1)
 python -m tests.engine.bench                  # speed at 5,000 reports
 ```
+
+## Rule 7 (v1.2): a coordinated burst is one voice
+Raised by the mentor at checkpoint 1: "one person asks 10 friends to report". When 8 or more voices with
+no track record come from ONE area within 6 hours (occurred time) and make up at least 80% of the voices
+on a number, `trust.burst_core` finds them and `trust.merge_burst` turns them into one linked voice: no
+weight, never on the map or in alerts. The lookup reply carries `trust.burst_voices` (size of the merged
+burst) and `trust.hold` (set only when the burst changed the answer). Track records count a burst once,
+so a ring cannot confirm a number by bursting it and then use that as history. Tests: `tests/engine/test_burst.py`.
+
+## Judge console sandbox (`app/demo.py`)
+`run(REGISTRY, ENGINE.config, seed)` builds a FRESH Engine with the same code and config and replays the
+brief's tricks, the checkpoint-1 ring, real waves, alerts, privacy canaries, the verified list and a dispute.
+26 checks, about 0.1 s. It never touches the live engine or the database.

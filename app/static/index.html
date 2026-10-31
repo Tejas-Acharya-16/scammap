@@ -89,7 +89,7 @@ thanks:"Thanks. Your report is anonymous.",bad:"That does not look like a valid 
 none:"No alerts here.",noClusters:"No reports near this area in the last 7 days.",reportToo:"Report this too",dispute:"Is this your number? Dispute",
 disputeSent:"Dispute received. It is under review.",bizName:"Business name (optional)",bizMail:"Contact email (optional)",send:"Send dispute",
 KNOWN_SCAM:"Known scam",SUSPICIOUS:"Suspicious",NO_REPORTS:"No reports",VERIFIED_BUSINESS:"Verified business",
-sKNOWN:"Reported by {n} people.",sSUSP:"Reported by {n} {p}. Not enough to confirm.",sNONE:"No reports yet. That does not mean it is safe.",sVER:"Verified business: {l}",
+sKNOWN:"Reported by {n} people.",sSUSP:"Reported by {n} {p}. Not enough to confirm.",sBurst:"Reported {n} times, mostly by new accounts from one area within a few hours. We count a burst like this as one voice until other people confirm it. Stay careful.",sNONE:"No reports yet. That does not mean it is safe.",sVER:"Verified business: {l}",
 person:"person",people:"people",review:"A business disputed this. Under review.",last:"Last reported",
 spike:"Scam reports here jumped: {c} in 24 hours (usual {b} a day).",newtype:"New kind of scam here: {t}.",
 now:"Just now",today:"Today",yday:"Yesterday",earlier:"Earlier",phone:"Phone",upi:"UPI ID",url:"Link",sender_id:"SMS sender"},
@@ -100,7 +100,7 @@ thanks:"धन्यवाद। आपकी रिपोर्ट गुमन
 none:"यहाँ कोई अलर्ट नहीं।",noClusters:"पिछले 7 दिनों में यहाँ कोई रिपोर्ट नहीं।",reportToo:"इसे भी रिपोर्ट करें",dispute:"क्या यह आपका नंबर है? आपत्ति करें",
 disputeSent:"आपत्ति मिली। समीक्षा जारी है।",bizName:"व्यवसाय का नाम (वैकल्पिक)",bizMail:"संपर्क ईमेल (वैकल्पिक)",send:"आपत्ति भेजें",
 KNOWN_SCAM:"ज्ञात स्कैम",SUSPICIOUS:"संदिग्ध",NO_REPORTS:"कोई रिपोर्ट नहीं",VERIFIED_BUSINESS:"सत्यापित व्यवसाय",
-sKNOWN:"{n} लोगों ने रिपोर्ट किया।",sSUSP:"{n} लोगों ने रिपोर्ट किया। पुष्टि के लिए काफ़ी नहीं।",sNONE:"अभी कोई रिपोर्ट नहीं। इसका मतलब यह नहीं कि यह सुरक्षित है।",sVER:"सत्यापित व्यवसाय: {l}",
+sKNOWN:"{n} लोगों ने रिपोर्ट किया।",sSUSP:"{n} लोगों ने रिपोर्ट किया। पुष्टि के लिए काफ़ी नहीं।",sBurst:"{n} बार रिपोर्ट किया गया, ज़्यादातर एक ही इलाके के नए अकाउंट से, कुछ ही घंटों में। जब तक दूसरे लोग पुष्टि न करें, हम ऐसी रिपोर्टों को एक आवाज़ मानते हैं। सावधान रहें।",sNONE:"अभी कोई रिपोर्ट नहीं। इसका मतलब यह नहीं कि यह सुरक्षित है।",sVER:"सत्यापित व्यवसाय: {l}",
 person:"व्यक्ति",people:"लोग",review:"एक व्यवसाय ने आपत्ति की है। समीक्षा जारी है।",last:"आख़िरी रिपोर्ट",
 spike:"यहाँ स्कैम रिपोर्ट अचानक बढ़ीं: 24 घंटे में {c} (आम तौर पर {b} रोज़)।",newtype:"यहाँ नया स्कैम: {t}।",
 now:"अभी",today:"आज",yday:"कल",earlier:"पहले",phone:"फ़ोन",upi:"UPI ID",url:"लिंक",sender_id:"SMS भेजने वाला"}};
@@ -152,7 +152,7 @@ async function check(value,type){const v=(value||"").trim();if(!v)return;const t
  $("result").innerHTML='<div class="card muted">…</div>';
  let r;try{r=await api(`/lookup?type=${encodeURIComponent(ty)}&value=${encodeURIComponent(v)}`)}catch(e){$("result").innerHTML=`<div class="card err">${t("net")}</div>`;return}
  if(r.status===400){$("result").innerHTML=`<div class="card err">${t("bad")}</div>`;return}if(r.status!==200)return;
- const b=r.body,n=b.distinct_reporters;let sent=b.verdict==="KNOWN_SCAM"?t("sKNOWN",{n}):b.verdict==="SUSPICIOUS"?t("sSUSP",{n,p:n===1?t("person"):t("people")}):b.verdict==="NO_REPORTS"?t("sNONE"):t("sVER",{l:b.label||""});
+ const b=r.body,n=b.distinct_reporters;let sent=b.trust&&b.trust.hold?t("sBurst",{n:b.report_count}):b.verdict==="KNOWN_SCAM"?t("sKNOWN",{n}):b.verdict==="SUSPICIOUS"?t("sSUSP",{n,p:n===1?t("person"):t("people")}):b.verdict==="NO_REPORTS"?t("sNONE"):t("sVER",{l:b.label||""});
  const adv=b.scam_type?(TYPES.find(a=>a[0]===b.scam_type)||TYPES[12])[3]:"";
  $("result").innerHTML=`<div class="card"><span class="verdict v-${b.verdict}">${t(b.verdict)}</span><div class="mono">${b.display_value}</div><div><b>${sent}</b></div>
  ${b.challenged?`<div class="muted">${t("review")}</div>`:""}${b.last_seen?`<div class="muted">${t("last")}: ${fmtDay(b.last_seen)}${b.scam_type?" · "+tname(b.scam_type):""}</div>`:""}

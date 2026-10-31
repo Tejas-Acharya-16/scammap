@@ -33,8 +33,6 @@ def test_alert_rows(name, desc, want):
 
 @pytest.mark.parametrize("trick", TRICKS)
 def test_tricks_raise_no_alert(trick):
-    if trick == "F4":
-        pytest.xfail("known limit: 40 friends with their own varied words look like a real wave")
     for seed in range(4):
         alerts, _ = alert_case(CFG, "trick:" + trick, seed)
         assert alerts == [], f"{trick}, seed {seed}: {alerts}"

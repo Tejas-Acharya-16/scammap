@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Judge Console · Community Scam Map</title>
+<style>
+:root{--ink:#0B1F3A;--muted:#5B6B80;--line:#D6DEE8;--bg:#F5F7FA;--card:#fff;--green:#1E8E5A;--greenbg:#EAF6EF;--warn:#C0392B;--warnbg:#FDECEA;--amber:#B7791F;--gray:#6B7C93}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.45}
+header{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+header b{font-size:17px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:16px;font-weight:700;font-size:13px;border:1px solid var(--line);background:#fff}
+.pill.ok{background:var(--greenbg);border-color:var(--green);color:var(--green)}
+.pill.bad{background:var(--warnbg);border-color:var(--warn);color:var(--warn)}
+.banner{background:var(--warn);color:#fff;padding:10px 16px;font-weight:600}
+main{max-width:1180px;margin:0 auto;padding:16px 16px 48px}
+h1{font-size:22px;margin:4px 0 6px}
+h2{font-size:17px;margin:0}
+h3{font-size:16px;margin:0 0 8px;display:flex;align-items:center;gap:8px}
+p{margin:6px 0}
+.muted{color:var(--muted);font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.btn{display:inline-block;padding:10px 16px;border:0;border-radius:10px;background:var(--green);color:#fff;font-size:15px;font-weight:700;cursor:pointer}
+.btn.alt{background:#fff;color:var(--ink);border:1px solid var(--ink)}
+.btn.small{padding:8px 12px;font-size:14px}
+.btn:disabled{opacity:.55;cursor:default}
+.runbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px}
+.runbar input{width:110px}
+input{font-size:15px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);min-width:0}
+.rowtag{display:inline-block;background:var(--ink);color:#fff;border-radius:7px;padding:2px 8px;font-size:12px;font-weight:700;letter-spacing:.02em;white-space:nowrap}
+.sechead{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.sechead h2{flex:1}
+.score{font-weight:800;font-size:15px;padding:3px 10px;border-radius:12px}
+.score.good{background:var(--greenbg);color:var(--green)}
+.score.bad{background:var(--warnbg);color:var(--warn)}
+.score.idle{background:var(--bg);color:var(--muted)}
+details.chk{border-top:1px solid var(--line);padding:8px 0}
+details.chk summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:22px minmax(0,1fr);gap:2px 8px;align-items:start}
+details.chk summary::-webkit-details-marker{display:none}
+.mark{font-weight:900;font-size:16px;line-height:1.3}
+.pass .mark{color:var(--green)}.fail .mark{color:var(--warn)}
+.ct{font-weight:600}
+.gist{grid-column:2;font-size:13px;color:var(--muted)}
+.ct,.gist,.how,.want,dd,ul.live li span{min-width:0;overflow-wrap:anywhere}
+.how{margin:6px 0 4px 30px;font-size:13px;color:var(--muted)}
+.want{margin:0 0 4px 30px;font-size:13px}
+pre{margin:4px 0 0 30px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;font-size:12px;overflow-x:auto;white-space:pre-wrap;word-break:break-word;max-height:280px}
+.v{display:inline-block;padding:1px 8px;border-radius:10px;color:#fff;font-weight:700;font-size:12px}
+.v-KNOWN_SCAM{background:var(--warn)}.v-SUSPICIOUS{background:var(--amber)}.v-NO_REPORTS{background:var(--gray)}.v-VERIFIED_BUSINESS{background:var(--green)}
+code,.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;margin:6px 0 10px}
+dt{color:var(--muted);font-size:13px}dd{margin:0;font-weight:600;word-break:break-word}
+.file{position:relative;overflow:hidden}
+.file input{position:absolute;inset:0;opacity:0;cursor:pointer}
+ul.live{list-style:none;margin:8px 0 0;padding:0}
+ul.live li{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:6px;padding:6px 0;border-top:1px solid var(--line);font-size:13px}
+ul.live li .ms{color:var(--muted)}
+.row{display:flex;gap:8px;align-items:center}
+.row input{flex:1}
+.big{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums}
+#qr{width:132px;height:132px;margin:6px 0}
+#qr img,#qr canvas{width:132px;height:132px}
+.hidden{display:none}
+a{color:var(--ink)}
+.note{background:#FFF8E6;border-radius:10px;padding:10px;font-size:13px;margin-top:8px}
+</style>
+</head>
+<body>
+<header>
+  <div><b>Community Scam Map</b> <span class="muted">· Judge console</span></div>
+  <div class="row"><span id="rules" class="pill">Rules …</span><span id="licPill" class="pill">Licence …</span></div>
+</header>
+<div id="lockBanner" class="banner hidden">Licence expired: every API route now answers 403 {"error":"LICENSE_EXPIRED"}. Upload a valid licence file in Row 5.</div>
+<main>
+  <section class="card">
+    <h1>Check every scoring row on one page</h1>
+    <p>Rows 1 to 4 and the bonus run in a <b>sandbox</b>: a fresh copy of the same engine and the same rules as this server, filled with new synthetic data on every run. It never reads or writes the live data, so you can run it as often as you like. Rows 5 to 7 and the live checks use this server directly.</p>
+    <div class="runbar">
+      <button id="runAll" class="btn">Run all checks</button>
+      <label class="muted">Seed <input id="seed" placeholder="random" inputmode="numeric"></label>
+      <span id="runSum" class="muted">Not run yet.</span>
+    </div>
+  </section>
+  <div class="grid">
+    <div id="rows"></div>
+    <aside>
+      <div class="card" id="r5">
+        <h3><span class="rowtag">Row 5</span> Licence</h3>
+        <dl>
+          <dt>Licensee</dt><dd id="lLic">…</dd>
+          <dt>Expires</dt><dd id="lExp">…</dd>
+          <dt>Status</dt><dd id="lStat">…</dd>
+          <dt>Time left</dt><dd id="lLeft" class="mono">…</dd>
+        </dl>
+        <div class="row">
+          <label class="btn alt small file">Upload licence file<input type="file" id="licFile" accept=".json,application/json"></label>
+          <button id="gateBtn" class="btn alt small">Test the gate now</button>
+        </div>
+        <div id="licMsg" class="muted" style="margin-top:8px"></div>
+        <p class="muted">Signed with Ed25519 (licensee + expiry). At expiry every API route answers 403 and the app shows "Licence expired. Contact your provider." Uploading a valid file brings it back within seconds: no restart, no data lost. A tampered file is refused with 400.</p>
+      </div>
+      <div class="card" id="r6">
+        <h3><span class="rowtag">Row 6</span> Easy to report</h3>
+        <p>Scan to open the app on your phone, or open it in a phone-sized window. Report any number and time yourself.</p>
+        <div class="row" style="align-items:flex-start;gap:14px">
+          <div><div id="qr"></div><div id="appUrl" class="mono muted"></div></div>
+          <div>
+            <button id="openApp" class="btn small">Open the app</button>
+            <div style="margin-top:12px" class="big" id="swTime">0.0 s</div>
+            <button id="swBtn" class="btn alt small">Start timer</button>
+          </div>
+        </div>
+        <p class="muted">No login, no name, no phone number asked. Hindi switch on every screen.</p>
+      </div>
+      <div class="card" id="live">
+        <h3>Live server checks <span class="muted">(read-only)</span></h3>
+        <button id="liveBtn" class="btn alt small">Run live checks</button>
+        <ul class="live" id="liveList"></ul>
+      </div>
+      <div class="card" id="try">
+        <h3>Check any value on the live server</h3>
+        <div class="row"><input id="q" placeholder="Number, UPI ID, link or SMS sender" autocomplete="off"><button id="qBtn" class="btn small">Check</button></div>
+        <div id="qOut"></div>
+      </div>
+      <div class="card" id="r7">
+        <h3><span class="rowtag">Row 7</span> Demo and code</h3>
+        <ul>
+          <li><a href="/">Phone app</a></li>
+          <li><a id="repo" href="#" target="_blank" rel="noopener">Code repository and README</a> (trust rules, licence, attack table, tests)</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</main>
+<script>
+const REPO = "https://github.com/Tejas-Acharya-16/scammap";
+const ROWS = [[1, "Stops fake reports"], [2, "Checking a number"], [3, "Map and alerts"], [4, "Privacy"], ["bonus", "Bonus: verified list, disputes, no alerts from fakes"]];
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+
+async function api(path, opt) {
+  const t0 = performance.now();
+  const r = await fetch(path, opt);
+  let body = null;
+  try { body = await r.json(); } catch (e) {}
+  if (r.status === 403 && body && body.error === "LICENSE_EXPIRED") lock(true);
+  return {status: r.status, body, ms: performance.now() - t0};
+}
+function lock(on) { $("lockBanner").className = on ? "banner" : "banner hidden"; }
+
+// ------------------------------------------------------------------ sandbox rows
+function placeholders() {
+  $("rows").innerHTML = ROWS.map(([row, title]) =>
+    `<section class="card"><div class="sechead"><span class="rowtag">${row === "bonus" ? "Bonus" : "Row " + row}</span><h2>${esc(title)}</h2><span class="score idle">not run</span></div>
+     <p class="muted">Press "Run all checks".</p></section>`).join("");
+}
+function gist(got) {
+  if (got && typeof got === "object" && !Array.isArray(got) && got.verdict) {
+    let s = `<span class="v v-${esc(got.verdict)}">${esc(got.verdict)}</span> <code>${esc(got.display_value)}</code>`;
+    if (got.report_count != null) s += ` · ${got.report_count} reports → ${got.distinct_reporters} independent`;
+    if (got.burst_counted_as_one) s += ` · burst of ${got.burst_counted_as_one} counted as one`;
+    return s;
+  }
+  if (Array.isArray(got)) {
+    if (!got.length) return "none";
+    if (typeof got[0] === "string") return esc(got[0]) + (got.length > 1 ? ` (and ${got.length - 1} more, all shown below)` : "");
+    return got.map(a => a.type ? esc(a.type) + (a.count != null ? " (" + a.count + ")" : "") : a.pincode ? esc(a.pincode) + ": count " + a.count : "").join(", ") || esc(JSON.stringify(got).slice(0, 120));
+  }
+  if (got && got.statuses) return `statuses ${esc(got.statuses.join(", "))} · stored ${got.stored}`;
+  if (got && got.leaked) return got.leaked.length ? "leaked: " + esc(got.leaked.join(", ")) : "nothing leaked";
+  if (got && got.p95_ms != null) return `p95 ${got.p95_ms} ms`;
+  if (got && got.after) return `before ${esc(got.before)} → after <span class="v v-${esc(got.after.verdict)}">${esc(got.after.verdict)}</span> <code>${esc(got.after.display_value)}</code> · on map: ${got.on_map}`;
+  const t = JSON.stringify(got);
+  return esc(t.length > 140 ? t.slice(0, 140) + "…" : t);
+}
+function render(res) {
+  $("rows").innerHTML = res.sections.map(sec => {
+    const ok = sec.checks.filter(c => c.ok).length, all = sec.checks.length;
+    return `<section class="card"><div class="sechead"><span class="rowtag">${sec.row === "bonus" ? "Bonus" : "Row " + sec.row}</span><h2>${esc(sec.title)}</h2><span class="score ${ok === all ? "good" : "bad"}">${ok}/${all}</span></div>
+      ${sec.checks.map(c => `<details class="chk ${c.ok ? "pass" : "fail"}"><summary><span class="mark" aria-label="${c.ok ? "pass" : "fail"}">${c.ok ? "✓" : "✗"}</span><span class="ct">${esc(c.title)}</span><span class="gist">${gist(c.got)}</span></summary>
+        <div class="how"><b>How:</b> ${esc(c.how)}</div><div class="want"><b>Want:</b> ${esc(c.want)}</div><pre>${esc(JSON.stringify(c.got, null, 1))}</pre></details>`).join("")}
+    </section>`;
+  }).join("");
+}
+async function runAll() {
+  const b = $("runAll");
+  b.disabled = true; b.textContent = "Running…";
+  try {
+    const seed = $("seed").value.trim();
+    const r = await api("/demo/run", {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify(seed ? {seed: Number(seed)} : {})});
+    if (r.status === 200 && r.body && r.body.sections) {
+      render(r.body);
+      $("runSum").innerHTML = `<b>${r.body.passed}/${r.body.total} checks passed</b> · ${r.body.ran_ms} ms on the server · seed ${r.body.seed} · live data touched: ${r.body.live_data_touched ? "yes" : "no"}`;
+      $("rules").textContent = "Rules " + r.body.config;
+    } else if (r.status === 403) {
+      $("runSum").innerHTML = `<span style="color:var(--warn);font-weight:700">403 LICENSE_EXPIRED</span>: the licence gate is working. Upload a valid licence in Row 5, then run again.`;
+    } else {
+      $("runSum").textContent = `The server answered ${r.status}. Try again in a few seconds.`;
+    }
+  } catch (e) {
+    $("runSum").textContent = "Network problem. Try again.";
+  } finally {
+    b.disabled = false; b.textContent = "Run all checks again";
+  }
+}
+
+// ------------------------------------------------------------------ licence (row 5)
+let lic = {left: null, at: 0};
+async function pollLicence() {
+  try {
+    const r = await api("/license");
+    const b = r.body || {};
+    $("lLic").textContent = b.licensee || "none installed";
+    $("lExp").textContent = b.expires_at || "-";
+    const valid = b.valid === true || b.status === "valid";
+    $("lStat").innerHTML = valid ? '<span style="color:var(--green)">valid</span>' : `<span style="color:var(--warn)">${esc(b.status || "not valid")}</span>`;
+    $("licPill").className = "pill " + (valid ? "ok" : "bad");
+    $("licPill").textContent = valid ? "Licence valid" : "Licence " + (b.status || "not valid");
+    lock(!valid);
+    let left = b.seconds_remaining;
+    if (left == null && b.expires_at) left = Math.round((Date.parse(b.expires_at) - Date.now()) / 1000);
+    lic = {left: left == null ? null : Math.max(0, left), at: Date.now()};
+  } catch (e) {}
+}
+function fmtLeft(s) {
+  if (s == null) return "-";
+  const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), x = Math.floor(s % 60);
+  return (d ? d + "d " : "") + String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") + ":" + String(x).padStart(2, "0");
+}
+setInterval(() => {
+  if (lic.left == null) { $("lLeft").textContent = "-"; return; }
+  $("lLeft").textContent = fmtLeft(Math.max(0, lic.left - (Date.now() - lic.at) / 1000));
+}, 250);
+$("licFile").onchange = async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const text = await f.text();
+  const r = await api("/license", {method: "POST", headers: {"content-type": "application/json"}, body: text});
+  $("licMsg").innerHTML = r.status === 200
+    ? `<span style="color:var(--green);font-weight:700">Accepted (200).</span> ${esc(JSON.stringify(r.body))}`
+    : `<span style="color:var(--warn);font-weight:700">Refused (${r.status}).</span> ${esc(JSON.stringify(r.body))}`;
+  e.target.value = "";
+  pollLicence();
+};
+$("gateBtn").onclick = async () => {
+  const n = "+91 90000 " + String(Math.floor(Math.random() * 1e5)).padStart(5, "0");
+  const r = await api("/lookup?type=phone&value=" + encodeURIComponent(n));
+  $("licMsg").innerHTML = `GET /lookup answered <b>${r.status}</b> ${esc(JSON.stringify(r.body).slice(0, 120))} ` +
+    (r.status === 200 ? "(licence valid: API open)" : r.status === 403 ? "(licence not valid: API locked)" : "");
+};
+
+// ------------------------------------------------------------------ row 6
+const appUrl = location.origin + "/";
+$("appUrl").textContent = appUrl;
+$("openApp").onclick = () => window.open("/", "scammap_app", "width=410,height=860");
+let sw = null;
+$("swBtn").onclick = () => {
+  if (sw) { clearInterval(sw.t); $("swBtn").textContent = "Start timer"; sw = null; return; }
+  const t0 = Date.now();
+  sw = {t: setInterval(() => $("swTime").textContent = ((Date.now() - t0) / 1000).toFixed(1) + " s", 100)};
+  $("swBtn").textContent = "Stop timer";
+};
+function drawQr() {
+  try { new QRCode($("qr"), {text: appUrl, width: 132, height: 132, correctLevel: QRCode.CorrectLevel.M}); }
+  catch (e) { $("qr").style.display = "none"; }
+}
+
+// ------------------------------------------------------------------ live checks
+async function liveChecks() {
+  const list = $("liveList");
+  list.innerHTML = "";
+  const rand = () => "+91 90000 " + String(Math.floor(Math.random() * 1e5)).padStart(5, "0");
+  const tests = [
+    ["GET /health", () => api("/health"), r => r.status === 200],
+    ["GET /license has licensee, expiry, status", () => api("/license"), r => r.status === 200 && r.body && "expires_at" in r.body && "status" in r.body],
+    ["GET /lookup on a fresh number", () => api("/lookup?type=phone&value=" + encodeURIComponent(rand())), r => r.status === 200 && r.body.verdict === "NO_REPORTS" && /X/.test(r.body.display_value)],
+    ["GET /lookup with junk (12345) is 400", () => api("/lookup?type=phone&value=12345"), r => r.status === 400 && r.body && r.body.error === "invalid_identifier"],
+    ["GET /map?days=7", () => api("/map?days=7"), r => r.status === 200 && Array.isArray(r.body.clusters)],
+    ["GET /alerts", () => api("/alerts"), r => r.status === 200 && Array.isArray(r.body.alerts)],
+    ["Unknown path is a JSON 404", () => api("/no-such-route"), r => r.status === 404 && r.body && !!r.body.error],
+    ["Wrong method is a JSON 405", () => api("/lookup", {method: "DELETE"}), r => r.status === 405 && r.body && !!r.body.error],
+  ];
+  for (const [name, run, ok] of tests) {
+    const li = document.createElement("li");
+    li.innerHTML = `<span>…</span><span>${esc(name)}</span><span class="ms"></span>`;
+    list.appendChild(li);
+    try {
+      const r = await run();
+      const pass = ok(r);
+      li.innerHTML = `<span class="mark" style="color:${pass ? "var(--green)" : "var(--warn)"}">${pass ? "✓" : "✗"}</span><span>${esc(name)} <span class="muted">→ ${r.status}</span></span><span class="ms">${Math.round(r.ms)} ms</span>`;
+    } catch (e) {
+      li.innerHTML = `<span class="mark" style="color:var(--warn)">✗</span><span>${esc(name)} <span class="muted">network error</span></span><span></span>`;
+    }
+  }
+  const times = [];
+  for (let i = 0; i < 20; i++) { const r = await api("/lookup?type=phone&value=" + encodeURIComponent(rand())); times.push(r.ms); }
+  times.sort((a, b) => a - b);
+  const p95 = times[Math.ceil(times.length * 0.95) - 1];
+  const li = document.createElement("li");
+  li.innerHTML = `<span class="mark" style="color:${p95 < 500 ? "var(--green)" : "var(--warn)"}">${p95 < 500 ? "✓" : "✗"}</span><span>20 lookups from this browser, p95 (network included)</span><span class="ms">${Math.round(p95)} ms</span>`;
+  list.appendChild(li);
+}
+$("liveBtn").onclick = liveChecks;
+
+// ------------------------------------------------------------------ try any value
+function detect(v) {
+  v = (v || "").trim();
+  if (!v) return null;
+  if (/^upi:\/\//i.test(v) || /^[^\s@]+@[a-z0-9]+$/i.test(v)) return "upi";
+  if (/^(https?:|hxxp|www\.)/i.test(v) || /^[a-z0-9-]+(\.[a-z0-9-]+)+(\/.*)?$/i.test(v)) return "url";
+  if (/^([a-z]{2}-?)?[a-z0-9]{6}(-[a-z])?$/i.test(v.replace(/\s/g, "")) && /[a-z]{3}/i.test(v)) return "sender_id";
+  return "phone";
+}
+async function tryValue() {
+  const v = $("q").value.trim();
+  if (!v) return;
+  const ty = detect(v);
+  const r = await api(`/lookup?type=${encodeURIComponent(ty)}&value=${encodeURIComponent(v)}`);
+  const b = r.body || {};
+  $("qOut").innerHTML = (r.status === 200
+    ? `<p><span class="v v-${esc(b.verdict)}">${esc(b.verdict)}</span> <code>${esc(b.display_value)}</code> · ${b.report_count} reports → ${b.distinct_reporters} independent${b.trust && b.trust.burst_voices ? ` · burst of ${b.trust.burst_voices} counted as one` : ""}</p>`
+    : `<p><b>${r.status}</b></p>`) + `<pre style="margin-left:0">${esc(JSON.stringify(b, null, 1))}</pre><p class="muted">Read as type "${ty}" · ${Math.round(r.ms)} ms</p>`;
+}
+$("qBtn").onclick = tryValue;
+$("q").onkeydown = e => { if (e.key === "Enter") tryValue(); };
+
+// ------------------------------------------------------------------ start
+$("repo").href = REPO;
+$("runAll").onclick = runAll;
+placeholders();
+pollLicence();
+setInterval(pollLicence, 5000);
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" onload="drawQr()" onerror="document.getElementById('qr').style.display='none'"></script>
+</body>
+</html>

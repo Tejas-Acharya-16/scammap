@@ -59,6 +59,13 @@ class Registry:
         load = lambda name: json.loads((p / name).read_text(encoding="utf-8"))
         return cls(load("areas.json"), load("verified.json"), load("taxonomy.json"))
 
+    def verified_items(self) -> list:
+        """(type, canonical value, label) for every verified entry, in file order. Used by the
+        judge console's sandbox to pick a verified business without naming one in code."""
+        out = [(t, c, label) for (t, c), label in self._verified.items()]
+        out += [("url", "https://" + host, label) for host, label in self._verified_hosts.items()]
+        return out
+
     # ------------------------------------------------------------------ lookups
     def verified_label(self, identifier_type: str, canon: str) -> Optional[str]:
         if identifier_type == "url":

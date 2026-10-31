@@ -187,6 +187,7 @@ class Engine:
         self._rid_index = defaultdict(dict)   # rid -> {ikey: earliest time}
         self._challenged = set()              # ikeys under dispute
         self._voices_cache = {}               # ikey -> [Voice]
+        self._core_cache = {}                 # ikey -> burst core over all voices (track records)
         self._counted_cache = None            # pincode -> [_Counted]
 
     # ------------------------------------------------------------------ lifecycle
@@ -295,6 +296,7 @@ class Engine:
         if ikey not in seen or r.t < seen[ikey]:
             seen[ikey] = r.t
         self._voices_cache.pop(ikey, None)
+        self._core_cache.pop(ikey, None)
         self._counted_cache = None
 
     # ------------------------------------------------------------------ POST /challenges
@@ -340,8 +342,8 @@ class Engine:
             reports = self._reports.get(ikey, [])
             label = self.registry.verified_label(itype, canon)
             challenged = ikey in self._challenged
-            voices = self._voices(ikey)
-            n, points_q = trust.score(voices, [self._proven(v, ikey) for v in voices], cfg)
+            voices, proven, burst = self._final(ikey)
+            n, points_q = trust.score(voices, proven, cfg)
             if label is not None:
                 verdict = VERIFIED_BUSINESS
             elif not reports:
@@ -350,6 +352,12 @@ class Engine:
                 verdict = KNOWN_SCAM
             else:
                 verdict = SUSPICIOUS
+            hold = False
+            if burst and verdict == SUSPICIOUS and not challenged:
+                # Say so only when the burst rule changed the answer.
+                raw = self._voices(ikey)
+                rn, rq = trust.score(raw, [self._proven(v, ikey) for v in raw], cfg)
+                hold = rn >= cfg.min_voices and rq >= cfg.min_points_q
             confirmed = n >= cfg.min_voices          # "3 different people" after the trust rules
             show_full = label is not None or (confirmed and not challenged)
             body = {
@@ -364,6 +372,8 @@ class Engine:
                 "challenged": challenged,
                 "type": itype,
                 "trust": {"voices": n, "points": points_q / 4, "needed": cfg.min_points_q / 4,
+                          "burst_voices": burst,
+                          "hold": "burst_from_new_accounts_in_one_area" if hold else None,
                           "config": self._config_hash},
             }
             if label is not None:
@@ -464,6 +474,35 @@ class Engine:
             self._voices_cache[ikey] = v
         return v
 
+    def _core_all(self, ikey: str) -> list:
+        """Burst core over ALL voices (no track-record check), cached. Used only to count an
+        identifier's independent voices for track records, so it never depends on other identifiers."""
+        c = self._core_cache.get(ikey)
+        if c is None:
+            c = trust.burst_core(self._voices(ikey), self.config)
+            self._core_cache[ikey] = c
+        return c
+
+    def _independent(self, ikey: str) -> int:
+        """Voices on an identifier, a burst counted once. A ring cannot confirm a number by bursting
+        it and then use that number as a track record."""
+        core = self._core_all(ikey)
+        return len(self._voices(ikey)) - (len(core) - 1 if core else 0)
+
+    def _final(self, ikey: str, need_proven: bool = True) -> tuple:
+        """(voices, proven, burst size) after rule 5: brand-new voices (no track record) that form a
+        burst in one area merge into one linked voice. No burst over all voices means none over a subset."""
+        voices = self._voices(ikey)
+        if not self._core_all(ikey):
+            proven = [self._proven(v, ikey) for v in voices] if need_proven else None
+            return voices, proven, 0
+        proven = [self._proven(v, ikey) for v in voices]
+        core = trust.burst_core(voices, self.config, eligible=[not p for p in proven])
+        if not core:
+            return voices, proven, 0
+        merged, merged_proven = trust.merge_burst(voices, proven, core)
+        return merged, merged_proven, len(core)
+
     def _excluded(self, ikey: str) -> bool:
         """Verified or disputed identifiers never confirm a track record and never move the map."""
         if ikey in self._challenged:
@@ -483,7 +522,7 @@ class Engine:
                     continue
                 if self._excluded(other):
                     continue
-                if len(self._voices(other)) - 1 >= cfg.proven_other_voices:
+                if self._independent(other) - 1 >= cfg.proven_other_voices:
                     return True
         return False
 
@@ -493,7 +532,8 @@ class Engine:
             for ikey, reports in self._reports.items():
                 if not reports or self._excluded(ikey):
                     continue
-                for v in trust.counted_voices(self._voices(ikey), self.config):
+                voices, _, _ = self._final(ikey, need_proven=False)
+                for v in trust.counted_voices(voices, self.config):
                     f = v.first
                     by_area[f.pincode].append(_Counted(f.t, f.scam_type, f.scam_type_key, v.personal))
             self._counted_cache = by_area
