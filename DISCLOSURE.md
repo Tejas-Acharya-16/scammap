@@ -13,7 +13,7 @@ or earlier hackathons.
 | SQLAlchemy | Database access (SQLite locally, PostgreSQL on the server) | MIT |
 | psycopg 3 | PostgreSQL driver | LGPL-3.0 |
 | Pydantic | Request models | MIT |
-| PyNaCl | Ed25519 check of the licence signature | Apache-2.0 |
+| PyNaCl | Ed25519 check of the licence signature; signing lookup answers (`app/attestation.py`) | Apache-2.0 |
 | httpx | Test client | BSD-3-Clause |
 | pytest | Tests | MIT |
 
@@ -26,6 +26,7 @@ or earlier hackathons.
 ## In the browser
 
 - qrcodejs 1.0.0, loaded from cdnjs, draws the QR code on the judge console (`/judge`). The page works without it.
+- tweetnacl 1.0.3 (public domain, Unlicense), loaded from cdnjs with a pinned integrity hash, checks signed answers in the "Verify an answer" panel on `/judge`. Without it the panel says NOT CHECKED, and `tools/verify_attestation.py` does the same check. A byte-identical copy is in `tests/e2e/assets` so the browser tests run without a network.
 - No web fonts: the pages use the device's system fonts (Inter where the device already has it). Both pages share one stylesheet, `app/static/theme.css`, written for this project.
 - The map pin in the header is drawn in CSS. No logo, image or asset from any other site or company is used.
 - Icons are Unicode emoji, drawn by the device's own emoji font. No icon pack and no third-party logos.

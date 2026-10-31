@@ -65,7 +65,8 @@ JSON in and out. Times are ISO 8601 with `+05:30`. Errors: `{"error": "<code>"}`
 |---|---|---|---|
 | `/health` | GET | `200 {"ok": true}` | — |
 | `/reports` | POST | `201 {"report_id", "case_id", "merged"}` | `400 {"error": "…"}` |
-| `/lookup?type=&value=` | GET | `200` (verdict object) | `400` for impossible values |
+| `/lookup?type=&value=` | GET | `200` (verdict object, plus a signed `attestation`: see [Signed answers](#signed-answers)) | `400` for impossible values |
+| `/attestation/key` | GET | `200 {"alg": "Ed25519", "key_id", "public_key"}` | — |
 | `/map?pincode=&days=7&radius_km=2` | GET | `200 {"clusters": [...]}` | `400` for malformed pincode |
 | `/alerts?pincode=` | GET | `200 {"alerts": [...]}` | `400` for malformed pincode |
 | `/admin/reset` | POST | `200 {"ok": true}` | — |
@@ -189,6 +190,35 @@ curl -X POST $URL/license -H 'content-type: application/json' --data @lic5.json
 
 ---
 
+## Signed answers
+
+Every `GET /lookup` answer carries one extra field, `attestation`: a signed copy of what this server said. A bank or insurer that pins our public key can later check that an answer came from this ScamMap server, and when. **It proves which server said what and when. It does not prove that the verdict is right.**
+
+- `GET /attestation/key` returns `{"alg": "Ed25519", "key_id", "public_key"}` (base64). It sits behind the licence gate like every API route, and so does `/lookup`: a server without a valid licence answers 403 and signs nothing.
+- The attestation is `{"v": 1, "key_id", "issued_at", "type", "value_sha256", "verdict", "voices", "report_count", "config", "sig"}`. `sig` is the Ed25519 signature over the canonical JSON (sorted keys, no spaces, UTF-8) of every other field. Changing, adding or removing any field breaks it. The other answer fields are unchanged.
+- `value_sha256` is the SHA-256 of the value's standard form (`+919876543210`), so every way of typing one number gives one hash. `voices` is `distinct_reporters`. `config` is the trust-rules hash, so an answer is tied to the rules that produced it. `issued_at` is this server's clock in IST.
+- No new secret: the key's seed is HMAC-SHA256(key=`TRUST_SALT`, msg=`scammap-attestation-v1`). The same `TRUST_SALT` gives the same key after every restart. `key_id` is the first 8 hex characters of SHA-256 of the public key. The seed is never stored, logged or returned.
+
+Check an answer (Python with PyNaCl, from the repository folder):
+
+```bash
+curl -s "$URL/attestation/key" > key.json            # pin this once, and keep its key_id
+curl -s "$URL/lookup?type=phone&value=%2B919000055501" > answer.json
+python tools/verify_attestation.py answer.json key.json --value "+91 90000 55501"
+# prints VALID (exit 0) or INVALID (exit 1)
+```
+
+On `/judge`, the "Verify an answer" panel does the same check in the browser with tweetnacl, and "Tamper" flips the verdict to show INVALID.
+
+Limits:
+- Anyone who holds `TRUST_SALT` can sign. It is already the secret that keys the reporter hashes. Changing it changes the key, and it also stops new reports from linking to older reports by the same reporter, so it is not a casual step.
+- `issued_at` is the server's own claim, not a third-party timestamp.
+- `value_sha256` does not hide a phone number: trying every number finds it. Treat an attestation like the number itself, and share it only with someone who already has the number.
+- A local run without `TRUST_SALT` uses a public default salt, so anyone can forge its answers. Pin only the live server's key.
+- Signing adds about 0.1 ms per lookup (p95, in process, in our bench): `python -m pytest tests/unit/test_attestation.py -k p95 -s`.
+
+---
+
 ## Privacy
 
 Security notes (what we protect, how, what is open by design, known limits): see [SECURITY.md](SECURITY.md).
@@ -233,10 +263,10 @@ All results below are from our own synthetic data and generators. They are not f
 # Engine tests (256 passed, 2 known limits)
 python -m pytest tests/engine -q
 
-# Everything except the browser tests (307 passed, 2 known limits)
+# Everything except the browser tests (333 passed, 2 known limits)
 python -m pytest tests -q --ignore=tests/e2e
 
-# Browser tests at phone size (25 passed; first run: python -m playwright install chromium)
+# Browser tests, phone and laptop size (29 passed; first run: python -m playwright install chromium)
 python -m pytest tests/e2e -q
 
 # In-process attack table (60 seeds, ~20 seconds)
