@@ -1,7 +1,6 @@
-2026-10-31 21:48:27 IST | X-Commit: d141030 | our generators, not the judges' tool
-Target: https://scammap-yp1k.onrender.com. This resets the server before and after. Seeds: 2
-  seed 1/2: 834 reports sent (37 s)
-  seed 2/2: 843 reports sent (73 s)
+2026-11-01 02:42:42 IST | X-Commit: f711f81 | our generators, not the judges' tool
+Target: https://scammap-yp1k.onrender.com. This resets the server before and after. Seeds: 1
+  seed 1/1: 834 reports sent (30 s)
 
 Scenario                                             Want  KNOWN_SCAM  Result
 8 reporters with history, spread over 13 days        high        100%  PASS
@@ -17,7 +16,7 @@ Scenario                                             Want  KNOWN_SCAM  Result
 4 new, notes picked from a list of 10 sample texts   high        100%  PASS
 12 new within 3 hours, across 6 areas                high        100%  PASS
 20 friends in one hour + 3 real people elsewhere     high        100%  PASS
-8 new, all empty notes                               high          0%  KNOWN LIMIT
+8 new, all empty notes                               high        100%  PASS
 2 new, own words (must stay SUSPICIOUS)              low           0%  PASS
 40 friends, same note, 40 networks                   0             0%  PASS
 40 friends, empty notes                              0             0%  PASS
@@ -37,5 +36,5 @@ one person x6, rotating networks                     0             0%  PASS
 40 friends, lightly reworded (up to 3 word swaps)    0             0%  PASS
 1 person + 10 friends, each picks another area       0           100%  KNOWN LIMIT
 
-1677 reports sent over HTTP, 0 rejected (expected 0). Failures: 0.
+834 reports sent over HTTP, 0 rejected (expected 0). Failures: 0.
 Our generators, not the judges' tool. Quote as 'in our tests'.
