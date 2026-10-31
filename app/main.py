@@ -173,6 +173,7 @@ MAX_BODY_BYTES = 16 * 1024  # 16 KiB request body limit (one report is well unde
 REGISTRY = Registry.from_dir(Path(__file__).parent / "data")
 INDEX_HTML = Path(__file__).parent / "static" / "index.html"
 JUDGE_HTML = Path(__file__).parent / "static" / "judge.html"
+THEME_CSS = Path(__file__).parent / "static" / "theme.css"   # the shared look of / and /judge
 PAGES = frozenset({"/", "/judge"})  # served on GET only; exempt from the licence gate
 
 # Which deploy is answering (headers on /health)
@@ -481,6 +482,12 @@ def index():
 def judge():
     # Judge console. Exempt from the licence gate like "/".
     return FileResponse(JUDGE_HTML, media_type="text/html")
+
+
+@app.get(STATIC_PREFIX + "/theme.css")
+def theme_css():
+    # One stylesheet for both pages. Under /static, so it loads while the licence is expired too.
+    return FileResponse(THEME_CSS, media_type="text/css")
 
 
 @app.get("/health")

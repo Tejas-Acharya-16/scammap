@@ -26,7 +26,8 @@ or earlier hackathons.
 ## In the browser
 
 - qrcodejs 1.0.0, loaded from cdnjs, draws the QR code on the judge console (`/judge`). The page works without it.
-- No web fonts: the pages use the device's system fonts.
+- No web fonts: the pages use the device's system fonts (Inter where the device already has it). Both pages share one stylesheet, `app/static/theme.css`, written for this project.
+- The map pin in the header is drawn in CSS. No logo, image or asset from any other site or company is used.
 - Icons are Unicode emoji, drawn by the device's own emoji font. No icon pack and no third-party logos.
 
 ## Services and images
