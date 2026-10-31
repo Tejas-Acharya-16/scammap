@@ -76,21 +76,23 @@ Unknown routes return `404 {"error": "not_found"}`. Wrong method returns `405 {"
 
 ## How the trust rules work
 
-The system counts independent **voices**, not raw reports. A number is marked KNOWN_SCAM only when at least 3 voices report it and they add up to at least 1.5 points. Fewer voices means SUSPICIOUS. No reports means NO_REPORTS.
+The system counts independent **voices**, not raw reports. A number is marked KNOWN_SCAM only when at least 3 voices report it and they add up to at least 1.5 points. Fewer voices means SUSPICIOUS. No reports means NO_REPORTS. No single signal decides: who reported, from which network, when, from which area, with what track record.
 
 1. **Junk is turned away at the door.** A number, UPI ID, link or sender that cannot exist, an area we do not cover, or an impossible time is rejected before anything is stored.
 
 2. **One person is one voice.** Reports on one number are linked into one voice when they share a reporter identity (at any time), or a network within 24 hours. Many reports from the same connection within a short time count as one person.
 
-3. **Copy-paste is one voice.** The same text, or a lightly edited copy of a long text, posted by 3 or more different reporters on one number links those reports. If a number carries 2 or more such pasted texts, pairs sharing even two people are also linked (a campaign working from a list of texts).
+3. **Copy-paste is one voice, when the copies arrive together.** The same text, or a lightly edited copy of a long text, posted by 3 or more different reporters within 6 hours links those reports. If a number carries 2 or more such pasted texts, texts shared by even two people in that window are linked too. Copies spread over days are not linked: real victims often repeat the same words from a news story or a form.
 
-4. **Track record.** A voice counts 1.0 points when its reporter earlier reported a different number that at least two other voices confirmed (and that number is not verified or disputed). Otherwise 0.5.
+4. **A burst of new accounts is one voice.** When 8 or more voices with no track record arrive within 6 hours and make up at least 80% of the voices on the number, they count as one voice if they come from one area, or if they wrote no words of their own. This is the "one person asks 10 friends" case.
 
-5. **Own words.** A voice from one reporter with a note of 3 or more words counts in full. An empty or very short note counts half, and all such short-note voices together add at most 1.0. A linked group (rule 2 or 3) is one voice and adds no weight at all.
+5. **Track record.** A voice counts 1.0 points when its reporter earlier reported a different number that at least two other independent voices confirmed (and that number is not verified or disputed). Otherwise 0.5.
 
-6. **Threshold.** A number is KNOWN_SCAM when at least 3 voices report it and they add up to at least 1.5 points. A verified number is always VERIFIED_BUSINESS, whatever is reported. A disputed number is never KNOWN_SCAM.
+6. **Notes never block an honest report.** A voice weighs the same with or without a note. Three different people on their own networks, spread over time, make a number KNOWN_SCAM whatever they wrote. A linked group (rules 2 to 4) is one voice and adds no weight.
 
-7. **Map and alerts count only clean voices.** None of the four tricks (friends, same network, one person, copy-paste) can move the map or trigger alerts.
+7. **Threshold.** A number is KNOWN_SCAM when at least 3 voices report it and they add up to at least 1.5 points. A verified number is always VERIFIED_BUSINESS, whatever is reported. A disputed number is never KNOWN_SCAM.
+
+8. **Map and alerts count only clean voices.** None of the tricks (friends, same network, one person, copy-paste, bursts) can move the map or trigger alerts.
 
 ---
 
@@ -98,10 +100,10 @@ The system counts independent **voices**, not raw reports. A number is marked KN
 
 We say these out loud. In our tests:
 
-- **Many new accounts on different networks, each writing different words in their own voice, arriving together** look exactly like a real wave. The verified list protects listed businesses from this; for unlisted numbers, this is the main hole.
-- **Lightly reworded copies** (3 word swaps in an 18-word text) are not caught. Lowering the threshold would merge real reporters who describe one campaign in similar words.
-- **Real waves where every reporter left the note empty** stay SUSPICIOUS. Empty notes add at most 1.0 point total.
-- **A ring can build a track record** by first reporting numbers that other ring members also report.
+- **Friends who each pick a different area and write their own words, arriving together,** look like a real wave and are not stopped. The verified list protects listed businesses; disputes protect everyone else.
+- **A real wave in which 8 or more people paste one example sentence within 2 hours** waits as SUSPICIOUS: it looks exactly like a copy-paste campaign.
+- **A real local wave of 8 or more brand-new people in one area within 6 hours** waits as SUSPICIOUS until people from other areas, other days or with a track record confirm it.
+- **A small ring of 3 to 7** can still mark a number, and a ring can build a track record by first reporting numbers its members also report.
 - **People behind one network prefix within 24 hours** (a campus, carrier NAT, a family) count as one voice and add no weight.
 
 ---
@@ -222,7 +224,7 @@ python -m pytest tests/engine -q
 python -m tests.engine.scenarios --seeds 60 --compare
 ```
 
-### Attack table (in our tests, config `76f35c12`)
+### Attack table (in our tests, config `d7a23b4c`, engine v1.3)
 
 **Real waves — should be detected:**
 
@@ -232,15 +234,21 @@ python -m tests.engine.scenarios --seeds 60 --compare
 | 8 brand-new reporters, spread | 60 | 100% detected |
 | 6 brand-new, all within 2 hours | 60 | 100% detected |
 | 3 brand-new, own words | 60 | 100% detected |
-| 8 new, templated notes | 60 | 98% detected |
+| 8 new, templated notes | 60 | 100% detected |
 | 8 new, half with empty notes | 60 | 100% detected |
 | 10 reporters on only 15 shared networks | 60 | 100% detected |
 | 8 new, short notes of 3 to 4 words | 60 | 100% detected |
 | 8 new, 4 on 2 shared networks, days apart | 60 | 100% detected |
-| 7 new, notes from a list of 10 texts | 60 | 98% detected |
-| 4 new, notes from a list of 10 texts | 60 | 98% detected |
+| 7 new, notes from a list of 10 texts | 60 | 100% detected |
+| 4 new, notes from a list of 10 texts | 60 | 100% detected |
 | 12 new within 3 hours, across 6 areas | 60 | 100% detected |
 | 20 friends in one hour + 3 real people elsewhere | 60 | 100% detected |
+| 8 new, all empty notes | 60 | 100% detected |
+| Lazy test data: 5 people, empty notes, a week, any area | 60 | 100% detected |
+| Lazy test data: 5 people, one example note, a week | 60 | 98% detected |
+| Lazy test data: 12 people, 3 template notes, a week | 60 | 100% detected |
+| Lazy test data: 3 people, empty notes, 3 days | 60 | 100% detected |
+| Lazy test data: 3 people, one example note, 3 days | 60 | 92% detected |
 
 **Tricks — should be stopped:**
 
@@ -260,6 +268,8 @@ python -m tests.engine.scenarios --seeds 60 --compare
 | 3 attackers × 10 accounts, 3 networks | 60 | 0% — stopped |
 | 40 friends report a verified business | 60 | 0% — VERIFIED_BUSINESS held |
 | 1 person + 10 friends, own words, one area, 1 hour | 60 | 0% — stopped |
+| 40 friends, one note, 1 hour, any area | 60 | 0% — stopped |
+| 40 friends, empty notes, 1 hour, any area | 60 | 0% — stopped |
 | 40 friends, own varied notes, 40 networks, one area | 60 | 0% — stopped |
 | 40 friends, lightly reworded (up to 3 word swaps) | 60 | 0% — stopped |
 
@@ -268,7 +278,7 @@ python -m tests.engine.scenarios --seeds 60 --compare
 | Scenario | Seeds | Result |
 |---|---|---|
 | 1 person + 10 friends, each picks another area | 60 | 100% — not stopped |
-| 8 new, all empty notes | 60 | 0% detected (stays SUSPICIOUS) |
+| Lazy test data: 8 people, one example note, within 2 hours | 60 | 0% detected (stays SUSPICIOUS) |
 
 **Alerts (in our tests, 15 seeds each):**
 

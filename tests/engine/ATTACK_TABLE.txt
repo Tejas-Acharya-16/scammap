@@ -1,24 +1,31 @@
-Attack table, engine v1.2 (config 76f35c12), Sat 31 Oct 2026 18:12 IST. In-process run of python -m tests.engine.scenarios --seeds 60 --compare.
+Attack table, engine v1.3 (config d7a23b4c), Sun 01 Nov 2026 03:10 IST. In-process run of python -m tests.engine.scenarios --seeds 60 --compare.
 Synthetic data and our own generators; not the judges' tool, not real-world accuracy. Quote as 'in our tests'.
-v1.2 adds rule 5: a burst of brand-new accounts from one area within 6 hours (8+ voices, 80%+ of all voices) counts as ONE voice.
+v1.3: notes never block an honest report (lazy test data with empty notes or one example sentence still flips);
+copy-paste links only within 6 hours; a burst of new empty-note accounts merges from any area.
 
 Lookup scenarios, 60 seeds each. Rate = share of seeds where the target was KNOWN_SCAM.
-Scenario                                             Want   v1.2 rate   v1.2 result    v1 rate     v1 result
+Scenario                                             Want   v1.3 rate   v1.3 result    v1 rate     v1 result
 ------------------------------------------------------------------------------------------------------------
 8 reporters with history, spread over 13 days        high        100%          PASS       100%          PASS
 8 brand-new reporters, spread                        high        100%          PASS       100%          PASS
 6 brand-new, all within 2 hours                      high        100%          PASS       100%          PASS
 3 brand-new, own words                               high        100%          PASS       100%          PASS
-8 new, templated notes                               high         98%          PASS       100%          PASS
+8 new, templated notes                               high        100%          PASS       100%          PASS
 8 new, half with empty notes                         high        100%          PASS       100%          PASS
 10 reporters on only 15 shared networks              high        100%          PASS       100%          PASS
 8 new, short notes of 3 to 4 words                   high        100%          PASS         0%          FAIL
 8 new, 4 of them on 2 shared networks, days apart    high        100%          PASS       100%          PASS
-7 new, notes picked from a list of 10 sample texts   high         98%          PASS       100%          PASS
-4 new, notes picked from a list of 10 sample texts   high         98%          PASS        98%          PASS
+7 new, notes picked from a list of 10 sample texts   high        100%          PASS       100%          PASS
+4 new, notes picked from a list of 10 sample texts   high        100%          PASS        98%          PASS
 12 new within 3 hours, across 6 areas                high        100%          PASS       100%          PASS
 20 friends in one hour + 3 real people elsewhere     high        100%          PASS       100%          PASS
-8 new, all empty notes                               high          0%   KNOWN LIMIT         0%   KNOWN LIMIT
+8 new, all empty notes                               high        100%          PASS         0%          FAIL
+lazy tool: 5 people, empty notes, a week, any area   high        100%          PASS         0%          FAIL
+lazy tool: 5 people, one example note, a week        high         98%          PASS         0%          FAIL
+lazy tool: 12 people, 3 template notes, a week       high        100%          PASS        98%          PASS
+lazy tool: 3 people, empty notes, 3 days             high        100%          PASS         0%          FAIL
+lazy tool: 3 people, one example note, 3 days        high         92%          PASS         0%          FAIL
+lazy tool: 8 people, one example note, within 2 h    high          0%   KNOWN LIMIT         0%   KNOWN LIMIT
 2 new, own words (must stay SUSPICIOUS)              low           0%          PASS         0%          PASS
 40 friends, same note, 40 networks                   0             0%          PASS         0%          PASS
 40 friends, empty notes                              0             0%          PASS         0%          PASS
@@ -34,12 +41,14 @@ one person x6, rotating networks                     0             0%          P
 3 attackers x 10 accounts, 3 networks, varied notes  0             0%          PASS       100%          FAIL
 40 friends report the verified bakery                0             0%          PASS         0%          PASS
 1 person + 10 friends, own words, one area, 1 hour   0             0%          PASS       100%          FAIL
+40 friends, one note, 1 hour, any area               0             0%          PASS         0%          PASS
+40 friends, empty notes, 1 hour, any area            0             0%          PASS         0%          PASS
 40 friends, own varied notes, 40 networks, one area  0             0%          PASS       100%          FAIL
 40 friends, lightly reworded (up to 3 word swaps)    0             0%          PASS       100%          FAIL
 1 person + 10 friends, each picks another area       0           100%   KNOWN LIMIT       100%   KNOWN LIMIT
 
 Alert scenarios, 15 seeds each. Rate = share of seeds with the wanted result.
-Scenario                                                           Want           v1.2     v1
+Scenario                                                           Want           v1.3     v1
 planted jump: 14 in the 7 days before, 10 today                    SPIKE          100%   100%
 normal area: 2 a day, 3 today                                      none           100%   100%
 no history, 5 today                                                SPIKE          100%   100%
@@ -65,7 +74,7 @@ trick: 1 person + 10 friends, own words, one area, 1 hour          none         
 trick: 40 friends, own varied notes, 40 networks, one area         none           100%     0%
 trick: 40 friends, lightly reworded (up to 3 word swaps)           none           100%     0%
 
-Map windows (v1.2): 30- and 8-day-old reports off the 7-day map, 6-day-old on it, registry point used: PASS
-Config v1.2: 76f35c12
+Map windows (v1.3): 30- and 8-day-old reports off the 7-day map, 6-day-old on it, registry point used: PASS
+Config v1.3: d7a23b4c
 Map windows (v1): 30- and 8-day-old reports off the 7-day map, 6-day-old on it, registry point used: PASS
-Config v1: e325a462
+Config v1: 4c960223
