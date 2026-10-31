@@ -1,0 +1,21 @@
+[
+  {"type": "phone", "value": "1930", "label": "National Cybercrime Helpline"},
+  {"type": "phone", "value": "1909", "label": "TRAI Do Not Disturb"},
+  {"type": "phone", "value": "1800 1600", "label": "HDFC Bank customer care"},
+  {"type": "phone", "value": "1800 2600", "label": "HDFC Bank customer care"},
+  {"type": "phone", "value": "1800 1080", "label": "ICICI Bank customer care"},
+  {"type": "phone", "value": "1800 1234", "label": "State Bank of India customer care"},
+  {"type": "phone", "value": "1800 2100", "label": "State Bank of India customer care"},
+  {"type": "phone", "value": "1860 419 5555", "label": "Axis Bank customer care"},
+  {"type": "phone", "value": "1860 266 2666", "label": "Kotak Mahindra Bank customer care"},
+  {"type": "sender_id", "value": "HDFCBK", "label": "HDFC Bank SMS sender"},
+  {"type": "sender_id", "value": "ICICIB", "label": "ICICI Bank SMS sender"},
+  {"type": "sender_id", "value": "SBIINB", "label": "State Bank of India SMS sender"},
+  {"type": "sender_id", "value": "AXISBK", "label": "Axis Bank SMS sender"},
+  {"type": "sender_id", "value": "KOTAKB", "label": "Kotak Mahindra Bank SMS sender"},
+  {"type": "url", "value": "https://cybercrime.gov.in", "label": "National Cyber Crime Reporting Portal"},
+  {"type": "url", "value": "https://sancharsaathi.gov.in", "label": "Sanchar Saathi"},
+  {"type": "phone", "value": "+91 80 4100 2233", "label": "Fresh Bakes, Indiranagar (made up)"},
+  {"type": "phone", "value": "+91 80 2553 0190", "label": "Koramangala Pharmacy (made up)"},
+  {"type": "upi", "value": "freshbakes@okaxis", "label": "Fresh Bakes, Indiranagar (made up)"}
+]

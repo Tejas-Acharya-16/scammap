@@ -1,0 +1,16 @@
+{
+  "scam_types": [
+    "digital-arrest", "fake-kyc-link", "upi-refund-qr", "investment-group", "courier-customs",
+    "job-offer", "lottery-prize", "loan-app-harassment", "electricity-disconnection",
+    "fake-customer-care", "otp-call", "sextortion"
+  ],
+  "channels": ["Phone call", "SMS or WhatsApp", "QR code", "Fake website", "UPI request", "Something else"],
+  "channel_aliases": {
+    "call": "Phone call", "phone": "Phone call", "voicecall": "Phone call", "videocall": "Phone call",
+    "sms": "SMS or WhatsApp", "whatsapp": "SMS or WhatsApp", "message": "SMS or WhatsApp", "smswhatsapp": "SMS or WhatsApp",
+    "qr": "QR code",
+    "website": "Fake website", "link": "Fake website", "web": "Fake website",
+    "upi": "UPI request", "upicollect": "UPI request",
+    "other": "Something else", "else": "Something else"
+  }
+}

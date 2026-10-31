@@ -1,0 +1,64 @@
+Attack table, engine v1.1 (config eacc847a), Sat 31 Oct 2026 13:26 IST. In-process run of python -m tests.engine.scenarios --seeds 60 --compare.
+Synthetic data and our own generators; not the judges' tool, not real-world accuracy. Quote as 'in our tests'.
+
+Lookup scenarios, 60 seeds each. Rate = share of seeds where the target was KNOWN_SCAM.
+Scenario                                             Want   v1.1 rate   v1.1 result    v1 rate     v1 result
+------------------------------------------------------------------------------------------------------------
+8 reporters with history, spread over 13 days        high        100%          PASS       100%          PASS
+8 brand-new reporters, spread                        high        100%          PASS       100%          PASS
+6 brand-new, all within 2 hours                      high        100%          PASS       100%          PASS
+3 brand-new, own words                               high        100%          PASS       100%          PASS
+8 new, templated notes                               high         98%          PASS       100%          PASS
+8 new, half with empty notes                         high        100%          PASS       100%          PASS
+10 reporters on only 15 shared networks              high        100%          PASS       100%          PASS
+8 new, short notes of 3 to 4 words                   high        100%          PASS         0%          FAIL
+8 new, 4 of them on 2 shared networks, days apart    high        100%          PASS       100%          PASS
+7 new, notes picked from a list of 10 sample texts   high         98%          PASS       100%          PASS
+4 new, notes picked from a list of 10 sample texts   high         98%          PASS        98%          PASS
+8 new, all empty notes                               high          0%   KNOWN LIMIT         0%   KNOWN LIMIT
+2 new, own words (must stay SUSPICIOUS)              low           0%          PASS         0%          PASS
+40 friends, same note, 40 networks                   0             0%          PASS         0%          PASS
+40 friends, empty notes                              0             0%          PASS         0%          PASS
+22 accounts, one network, varied notes               0             0%          PASS         0%          PASS
+22 accounts, one network, empty notes                0             0%          PASS         0%          PASS
+22 accounts, one network, times spread over 5 days   0             0%          PASS         0%          PASS
+one person x6, same network                          0             0%          PASS         0%          PASS
+one person x6, rotating networks                     0             0%          PASS         0%          PASS
+20 accounts on 2 networks, same note                 0             0%          PASS         0%          PASS
+40 friends, 5 canned short phrases                   0             0%          PASS         0%          PASS
+40 friends, 5 canned long phrases                    0             0%          PASS       100%          FAIL
+40 friends, notes picked from a list of 10 texts     0             0%          PASS       100%          FAIL
+3 attackers x 10 accounts, 3 networks, varied notes  0             0%          PASS       100%          FAIL
+40 friends report the verified bakery                0             0%          PASS         0%          PASS
+40 friends, own varied notes, 40 networks            0           100%   KNOWN LIMIT       100%   KNOWN LIMIT
+40 friends, lightly reworded (up to 3 word swaps)    0           100%   KNOWN LIMIT       100%   KNOWN LIMIT
+
+Alert scenarios, 15 seeds each. Rate = share of seeds with the wanted result.
+Scenario                                                           Want           v1.1     v1
+planted jump: 14 in the 7 days before, 10 today                    SPIKE          100%   100%
+normal area: 2 a day, 3 today                                      none           100%   100%
+no history, 5 today                                                SPIKE          100%   100%
+new scam type, 3 people today                                      NEW_TYPE       100%   100%
+new scam type, 1 person in own words today                         NEW_TYPE       100%     0%
+type seen 10 days ago, 3 today                                     no NEW_TYPE    100%   100%
+10 empty notes, one number                                         none           100%   100%
+10 empty notes, 10 numbers                                         SPIKE          100%   100%
+trick: 40 friends, same note, 40 networks                          none           100%   100%
+trick: 40 friends, empty notes                                     none           100%   100%
+trick: 22 accounts, one network, varied notes                      none           100%   100%
+trick: 22 accounts, one network, empty notes                       none           100%   100%
+trick: 22 accounts, one network, times spread over 5 days          none           100%   100%
+trick: one person x6, same network                                 none           100%   100%
+trick: one person x6, rotating networks                            none           100%   100%
+trick: 20 accounts on 2 networks, same note                        none           100%   100%
+trick: 40 friends, 5 canned short phrases                          none           100%   100%
+trick: 40 friends, 5 canned long phrases                           none           100%     0%
+trick: 40 friends, notes picked from a list of 10 texts            none           100%     0%
+trick: 3 attackers x 10 accounts, 3 networks, varied notes         none           100%     0%
+trick: 40 friends report the verified bakery                       none           100%   100%
+trick: 40 friends, own varied notes, 40 networks                   none             0%     0%
+
+Map windows (v1.1): 30- and 8-day-old reports off the 7-day map, 6-day-old on it, registry point used: PASS
+Config v1.1: eacc847a
+Map windows (v1): 30- and 8-day-old reports off the 7-day map, 6-day-old on it, registry point used: PASS
+Config v1: 7231c846

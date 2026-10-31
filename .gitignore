@@ -1,0 +1,22 @@
+# secrets: never commit
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*private*
+# local data
+*.db
+*.sqlite
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+# web build tools (the built site in app/static IS committed)
+node_modules/
+web/dist/
+# os
+.DS_Store
+Thumbs.db
