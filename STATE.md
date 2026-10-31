@@ -21,7 +21,7 @@ Live: https://scammap-yp1k.onrender.com (app at `/`, judge console at `/judge`).
 
 ## Added since 01:00 (branch `ai-watchdog`, stacked on `live-map`)
 
-- AI watchdog: advisory `ai_watchdog` on every lookup with 3+ reports; judge console AI section (6 checks, 32/32 over 40 seeds); Check card shows it in English and Hindi. Held-out in our simulator: AUC 0.915; flags 94 of 230 planted campaigns that beat the rules; wrongly flags 22 of 749 confirmed real waves. Tests: 336 passed, 2 xfailed; e2e 27 passed (Claude, 1 Nov 05:15).
+- AI watchdog: advisory `ai_watchdog` on every lookup with 3+ reports; judge console AI section (6 checks, 32/32 over 40 seeds); Check card shows it in English and Hindi. Held-out in our simulator: AUC 0.915; flags 94 of 230 planted campaigns that beat the rules; wrongly flags 22 of 749 confirmed real waves. Tests: 336 passed, 2 xfailed; e2e 29 passed (Claude, 1 Nov 05:37).
 
 ## Open issues
 
