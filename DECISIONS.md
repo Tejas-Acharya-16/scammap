@@ -40,3 +40,12 @@ Decisions that took more than 10 minutes. Newest last.
 - Question: how do we let a judge check every row quickly without touching the live data?
 - Chosen: a page that runs 26 checks on a fresh in-memory copy of the engine with the same code and config, plus read-only live checks.
 - Status: done; 26/26 on live.
+
+## 7. Notes must never block an honest report (engine v1.3)
+- Question: found at 02:40 on 1 Nov. A test tool may give its real reports empty notes or one example sentence copied from the brief's sample. Do our note rules still find real scams?
+- Finding: no. Engine v1.2 marked 0% of such real waves KNOWN_SCAM, even 3 different people with empty notes (in our tests).
+- Options: keep v1.2 (strong on fakes, blind to lazy data); ignore notes entirely (loses multi-area fake bursts); notes count only when the copies or empty notes arrive together.
+- Chosen: the third. An unlinked voice weighs the same with or without a note; shared text links only within 6 hours; a burst of 8+ new empty-note voices merges from any area. Why: every fake trick in our table stays stopped, and every lazy real wave flips except 8+ identical notes within 2 hours.
+- Would change our mind: the organisers' sample data showing real reports always carry distinct notes.
+- Cost if wrong: a slow multi-day ring with empty notes could mark a number.
+- Status: done; 60-seed table in `tests/engine/ATTACK_TABLE.txt`, config `d7a23b4c`.

@@ -235,6 +235,25 @@ def scenario(world, name):
             add(NOW - rng.uniform(0, 1) * H, free_note(rng), new_rid(rng), new_prefix(rng))
         for p in rng.sample([a for a in AREAS if a != pin], 3):
             world.report(target, spread(), p, typ, free_note(rng), new_rid(rng), new_prefix(rng))
+    elif name in ("J1", "J2", "J3", "J4", "J5", "J6", "K2", "K3"):
+        # v1.3: a lazy test tool. Real reports with empty notes or one example sentence, any area.
+        example = "caller said my parcel has drugs and asked me to pay to avoid arrest"
+        templates = [free_note(rng) for _ in range(3)]
+        any_area = lambda when, note: world.report(target, when, rng.choice(AREAS), typ, note,
+                                                   new_rid(rng), new_prefix(rng))
+        week = lambda: NOW - rng.uniform(0.2, 7) * D
+        days3 = lambda: NOW - rng.uniform(0.2, 3) * D
+        plan = {"J1": (5, week, ""), "J2": (5, week, example), "J4": (3, days3, ""), "J5": (3, days3, example),
+                "J6": (8, lambda: NOW - rng.uniform(0, 2) * H, example),
+                "K2": (40, lambda: NOW - rng.uniform(0, 1) * H, example),
+                "K3": (40, lambda: NOW - rng.uniform(0, 1) * H, "")}
+        if name == "J3":
+            for _ in range(12):
+                any_area(week(), rng.choice(templates))
+        else:
+            count, when, note = plan[name]
+            for _ in range(count):
+                any_area(when(), note)
     elif name == "F14":
         prefix = new_prefix(rng)
         for _ in range(22):
@@ -261,7 +280,13 @@ LOOKUP_ROWS = [
     ("R13", "4 new, notes picked from a list of 10 sample texts", "high", False),
     ("R14", "12 new within 3 hours, across 6 areas", "high", False),
     ("R15", "20 friends in one hour + 3 real people elsewhere", "high", False),
-    ("R6", "8 new, all empty notes", "high", True),
+    ("R6", "8 new, all empty notes", "high", False),
+    ("J1", "lazy tool: 5 people, empty notes, a week, any area", "high", False),
+    ("J2", "lazy tool: 5 people, one example note, a week", "high", False),
+    ("J3", "lazy tool: 12 people, 3 template notes, a week", "high", False),
+    ("J4", "lazy tool: 3 people, empty notes, 3 days", "high", False),
+    ("J5", "lazy tool: 3 people, one example note, 3 days", "high", False),
+    ("J6", "lazy tool: 8 people, one example note, within 2 h", "high", True),
     ("R9", "2 new, own words (must stay SUSPICIOUS)", "low", False),
     ("F1", "40 friends, same note, 40 networks", "0", False),
     ("F2", "40 friends, empty notes", "0", False),
@@ -277,6 +302,8 @@ LOOKUP_ROWS = [
     ("F9", "3 attackers x 10 accounts, 3 networks, varied notes", "0", False),
     ("F13", "40 friends report the verified bakery", "0", False),
     ("F16", "1 person + 10 friends, own words, one area, 1 hour", "0", False),
+    ("K2", "40 friends, one note, 1 hour, any area", "0", False),
+    ("K3", "40 friends, empty notes, 1 hour, any area", "0", False),
     ("F4", "40 friends, own varied notes, 40 networks, one area", "0", False),
     ("F3", "40 friends, lightly reworded (up to 3 word swaps)", "0", False),
     ("F17", "1 person + 10 friends, each picks another area", "0", True),
@@ -445,7 +472,7 @@ def main(argv=None):
     ap.add_argument("--seeds", type=int, default=60)
     ap.add_argument("--compare", action="store_true", help="also run the v1 rules")
     args = ap.parse_args(argv)
-    configs = [("v1.2", TrustConfig())] + ([("v1", V1_CONFIG)] if args.compare else [])
+    configs = [("v1.3", TrustConfig())] + ([("v1", V1_CONFIG)] if args.compare else [])
     results = {label: run_lookup_table(cfg, args.seeds) for label, cfg in configs}
     print(f"Lookup scenarios, {args.seeds} seeds each. Rate = share of seeds where the target was KNOWN_SCAM.")
     head = f"{'Scenario':<52} {'Want':<5}" + "".join(f" {label + ' rate':>10} {label + ' result':>13}" for label, _ in configs)
@@ -457,7 +484,7 @@ def main(argv=None):
         for label, _ in configs:
             rate, susp = results[label][name]
             verdict = judge(want, rate, susp, limit)
-            failures += label == "v1.2" and verdict == "FAIL"
+            failures += label == "v1.3" and verdict == "FAIL"
             line += f" {rate * 100:9.0f}% {verdict:>13}"
         print(line)
     print()
@@ -465,7 +492,7 @@ def main(argv=None):
     print(f"Alert scenarios, {a_seeds} seeds each. Rate = share of seeds with the wanted result.")
     tables = {label: run_alert_table(cfg, a_seeds) for label, cfg in configs}
     print(f"{'Scenario':<66} {'Want':<12}" + "".join(f" {label:>6}" for label, _ in configs))
-    for i, (desc, want, _) in enumerate(tables["v1.2"]):
+    for i, (desc, want, _) in enumerate(tables["v1.3"]):
         line = f"{desc:<66} {want:<12}"
         for label, _ in configs:
             line += f" {tables[label][i][2] * 100:5.0f}%"

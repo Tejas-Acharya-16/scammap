@@ -2,7 +2,7 @@
 
 Goal: full marks on the seven scoring rows plus the bonus, with the live server healthy when the judges' tool runs.
 
-Live: https://scammap-yp1k.onrender.com (app at `/`, judge console at `/judge`). Engine v1.2, trust config `76f35c12`.
+Live: https://scammap-yp1k.onrender.com (app at `/`, judge console at `/judge`). Engine v1.3 (pending merge), trust config `d7a23b4c`.
 
 ## Verified (who ran it, when, where the output is)
 
