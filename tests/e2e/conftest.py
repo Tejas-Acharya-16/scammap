@@ -16,6 +16,8 @@ import sys
 import time
 from pathlib import Path
 
+from datetime import datetime, timedelta, timezone
+
 import httpx
 import pytest
 
@@ -113,3 +115,44 @@ def new_page(browser):
     yield make
     for ctx in contexts:
         ctx.close()
+
+
+# ---- security tests (stored XSS, headers) -------------------------------------------------
+IST = timezone(timedelta(hours=5, minutes=30))
+# A page that runs this is a failed test. It hooks alert() too, so onload=alert(1) is caught.
+INIT_SCRIPT = "window.__pwned = []; window.alert = function (x) { window.__pwned.push('alert:' + x); };"
+# different words per reporter: near-identical notes are merged into one voice by the trust rules
+NOTES = [
+    "The text said my electricity would be cut tonight unless I clicked the link and paid a fee",
+    "Got a message from an unknown number about a parcel stuck at customs, wanted a small payment",
+    "Someone pretending to be my bank asked me to verify my account through a strange website",
+    "A WhatsApp contact I did not know sent a prize notice and asked for card details to claim it",
+]
+
+
+@pytest.fixture(scope="session")
+def live_server(base_url):
+    return base_url
+
+
+@pytest.fixture
+def page(browser):
+    ctx = browser.new_context(viewport={"width": 390, "height": 844})
+    ctx.add_init_script(INIT_SCRIPT)
+    pg = ctx.new_page()
+    yield pg
+    ctx.close()
+
+
+def post_report(base: str, value: str, i: int, itype: str = "url") -> int:
+    """One report from reporter i: own reporter id, own network, own words (a full voice)."""
+    when = datetime.now(IST) - timedelta(minutes=5 + i)
+    body = {
+        "report_id": f"e2e-{abs(hash(value)) % 10**8}-{i}", "occurred_at": when.isoformat(),
+        "reported_at": when.isoformat(), "reporter_id": f"e2e-reporter-{i}",
+        "ip_prefix": f"{20 + 30 * i}.{40 + i}.{i}.0/24",   # three unrelated networks
+        "channel": "SMS or WhatsApp", "scam_type": "fake-kyc-link", "identifier_type": itype,
+        "identifier_value": value, "pincode": "560102", "note": NOTES[i % len(NOTES)],
+        "has_screenshot": False, "amount_lost_inr": 0,
+    }
+    return httpx.post(base + "/reports", json=body, timeout=5, trust_env=False).status_code

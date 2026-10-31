@@ -160,26 +160,26 @@ function placeholders() {
 function gist(got) {
   if (got && typeof got === "object" && !Array.isArray(got) && got.verdict) {
     let s = `<span class="v v-${esc(got.verdict)}">${esc(got.verdict)}</span> <code>${esc(got.display_value)}</code>`;
-    if (got.report_count != null) s += ` · ${got.report_count} reports → ${got.distinct_reporters} independent`;
-    if (got.burst_counted_as_one) s += ` · burst of ${got.burst_counted_as_one} counted as one`;
+    if (got.report_count != null) s += ` · ${esc(got.report_count)} reports → ${esc(got.distinct_reporters)} independent`;
+    if (got.burst_counted_as_one) s += ` · burst of ${esc(got.burst_counted_as_one)} counted as one`;
     return s;
   }
   if (Array.isArray(got)) {
     if (!got.length) return "none";
     if (typeof got[0] === "string") return esc(got[0]) + (got.length > 1 ? ` (and ${got.length - 1} more, all shown below)` : "");
-    return got.map(a => a.type ? esc(a.type) + (a.count != null ? " (" + a.count + ")" : "") : a.pincode ? esc(a.pincode) + ": count " + a.count : "").join(", ") || esc(JSON.stringify(got).slice(0, 120));
+    return got.map(a => a.type ? esc(a.type) + (a.count != null ? " (" + esc(a.count) + ")" : "") : a.pincode ? esc(a.pincode) + ": count " + esc(a.count) : "").join(", ") || esc(JSON.stringify(got).slice(0, 120));
   }
-  if (got && got.statuses) return `statuses ${esc(got.statuses.join(", "))} · stored ${got.stored}`;
+  if (got && got.statuses) return `statuses ${esc(got.statuses.join(", "))} · stored ${esc(got.stored)}`;
   if (got && got.leaked) return got.leaked.length ? "leaked: " + esc(got.leaked.join(", ")) : "nothing leaked";
-  if (got && got.p95_ms != null) return `p95 ${got.p95_ms} ms`;
-  if (got && got.after) return `before ${esc(got.before)} → after <span class="v v-${esc(got.after.verdict)}">${esc(got.after.verdict)}</span> <code>${esc(got.after.display_value)}</code> · on map: ${got.on_map}`;
+  if (got && got.p95_ms != null) return `p95 ${esc(got.p95_ms)} ms`;
+  if (got && got.after) return `before ${esc(got.before)} → after <span class="v v-${esc(got.after.verdict)}">${esc(got.after.verdict)}</span> <code>${esc(got.after.display_value)}</code> · on map: ${esc(got.on_map)}`;
   const t = JSON.stringify(got);
   return esc(t.length > 140 ? t.slice(0, 140) + "…" : t);
 }
 function render(res) {
   $("rows").innerHTML = res.sections.map(sec => {
     const ok = sec.checks.filter(c => c.ok).length, all = sec.checks.length;
-    return `<section class="card"><div class="sechead"><span class="rowtag">${sec.row === "bonus" ? "Bonus" : "Row " + sec.row}</span><h2>${esc(sec.title)}</h2><span class="score ${ok === all ? "good" : "bad"}">${ok}/${all}</span></div>
+    return `<section class="card"><div class="sechead"><span class="rowtag">${sec.row === "bonus" ? "Bonus" : "Row " + esc(sec.row)}</span><h2>${esc(sec.title)}</h2><span class="score ${ok === all ? "good" : "bad"}">${ok}/${all}</span></div>
       ${sec.checks.map(c => `<details class="chk ${c.ok ? "pass" : "fail"}"><summary><span class="mark" aria-label="${c.ok ? "pass" : "fail"}">${c.ok ? "✓" : "✗"}</span><span class="ct">${esc(c.title)}</span><span class="gist">${gist(c.got)}</span></summary>
         <div class="how"><b>How:</b> ${esc(c.how)}</div><div class="want"><b>Want:</b> ${esc(c.want)}</div><pre>${esc(JSON.stringify(c.got, null, 1))}</pre></details>`).join("")}
     </section>`;
@@ -193,7 +193,7 @@ async function runAll() {
     const r = await api("/demo/run", {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify(seed ? {seed: Number(seed)} : {})});
     if (r.status === 200 && r.body && r.body.sections) {
       render(r.body);
-      $("runSum").innerHTML = `<b>${r.body.passed}/${r.body.total} checks passed</b> · ${r.body.ran_ms} ms on the server · seed ${r.body.seed} · live data touched: ${r.body.live_data_touched ? "yes" : "no"}`;
+      $("runSum").innerHTML = `<b>${esc(r.body.passed)}/${esc(r.body.total)} checks passed</b> · ${esc(r.body.ran_ms)} ms on the server · seed ${esc(r.body.seed)} · live data touched: ${r.body.live_data_touched ? "yes" : "no"}`;
       $("rules").textContent = "Rules " + r.body.config;
     } else if (r.status === 403) {
       $("runSum").innerHTML = `<span style="color:var(--warn);font-weight:700">403 LICENSE_EXPIRED</span>: the licence gate is working. Upload a valid licence in Row 5, then run again.`;
@@ -241,14 +241,14 @@ $("licFile").onchange = async e => {
   const r = await api("/license", {method: "POST", headers: {"content-type": "application/json"}, body: text});
   $("licMsg").innerHTML = r.status === 200
     ? `<span style="color:var(--green);font-weight:700">Accepted (200).</span> ${esc(JSON.stringify(r.body))}`
-    : `<span style="color:var(--warn);font-weight:700">Refused (${r.status}).</span> ${esc(JSON.stringify(r.body))}`;
+    : `<span style="color:var(--warn);font-weight:700">Refused (${esc(r.status)}).</span> ${esc(JSON.stringify(r.body))}`;
   e.target.value = "";
   pollLicence();
 };
 $("gateBtn").onclick = async () => {
   const n = "+91 90000 " + String(Math.floor(Math.random() * 1e5)).padStart(5, "0");
   const r = await api("/lookup?type=phone&value=" + encodeURIComponent(n));
-  $("licMsg").innerHTML = `GET /lookup answered <b>${r.status}</b> ${esc(JSON.stringify(r.body).slice(0, 120))} ` +
+  $("licMsg").innerHTML = `GET /lookup answered <b>${esc(r.status)}</b> ${esc(JSON.stringify(r.body).slice(0, 120))} ` +
     (r.status === 200 ? "(licence valid: API open)" : r.status === 403 ? "(licence not valid: API locked)" : "");
 };
 
@@ -321,8 +321,8 @@ async function tryValue() {
   const r = await api(`/lookup?type=${encodeURIComponent(ty)}&value=${encodeURIComponent(v)}`);
   const b = r.body || {};
   $("qOut").innerHTML = (r.status === 200
-    ? `<p><span class="v v-${esc(b.verdict)}">${esc(b.verdict)}</span> <code>${esc(b.display_value)}</code> · ${b.report_count} reports → ${b.distinct_reporters} independent${b.trust && b.trust.burst_voices ? ` · burst of ${b.trust.burst_voices} counted as one` : ""}</p>`
-    : `<p><b>${r.status}</b></p>`) + `<pre style="margin-left:0">${esc(JSON.stringify(b, null, 1))}</pre><p class="muted">Read as type "${ty}" · ${Math.round(r.ms)} ms</p>`;
+    ? `<p><span class="v v-${esc(b.verdict)}">${esc(b.verdict)}</span> <code>${esc(b.display_value)}</code> · ${esc(b.report_count)} reports → ${esc(b.distinct_reporters)} independent${b.trust && b.trust.burst_voices ? ` · burst of ${esc(b.trust.burst_voices)} counted as one` : ""}</p>`
+    : `<p><b>${esc(r.status)}</b></p>`) + `<pre style="margin-left:0">${esc(JSON.stringify(b, null, 1))}</pre><p class="muted">Read as type "${esc(ty)}" · ${Math.round(r.ms)} ms</p>`;
 }
 $("qBtn").onclick = tryValue;
 $("q").onkeydown = e => { if (e.key === "Enter") tryValue(); };
