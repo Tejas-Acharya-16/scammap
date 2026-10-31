@@ -2,7 +2,7 @@
 
 Report and verify scams in seconds, anonymously.
 
-**Live:** <https://scammap-yp1k.onrender.com>
+**Live:** <https://scammap-yp1k.onrender.com> (opens on Report; <https://scammap-yp1k.onrender.com/#check> opens Check)
 **Judge console:** <https://scammap-yp1k.onrender.com/judge>
 Judge console: /judge runs every scoring check on a sandbox copy of the engine.
 
@@ -10,29 +10,44 @@ Judge console: /judge runs every scoring check on a sandbox copy of the engine.
 
 ## Run locally
 
-**Requirements:** Python 3.12+, pip
+**Requirements:** Python 3.12+ (or Docker). Install into a virtual environment: a plain `pip install` is refused by the system Python on recent Ubuntu, Debian and Homebrew (`externally-managed-environment`).
+
+macOS / Linux (on Debian or Ubuntu, `sudo apt install python3-venv` first if `venv` is missing):
 
 ```bash
+python3 -m venv .venv
+. .venv/bin/activate
 pip install -r requirements.txt
+export TRUST_SALT=my-local-salt   # any stable string; changing it splits reporter histories
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
-Set the trust salt (any stable string; changing it splits reporter histories):
+Windows (PowerShell):
 
-```bash
-export TRUST_SALT=my-local-salt
+```powershell
+python -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+$env:TRUST_SALT = "my-local-salt"
+.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
-Start the server (uses SQLite by default):
+The server uses SQLite by default. On a fresh database it installs the licence in `licenses/long.json` by itself, so it answers at once. Check it from a second terminal:
 
 ```bash
-uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-access-log
+curl http://127.0.0.1:8000/health                                     # {"ok":true}
+curl "http://127.0.0.1:8000/lookup?type=phone&value=%2B919876543210"  # 200, verdict NO_REPORTS
+```
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health
+Invoke-RestMethod "http://127.0.0.1:8000/lookup?type=phone&value=%2B919876543210"
 ```
 
 Or with Docker (app + Postgres):
 
 ```bash
 docker compose up --build
-# Server at http://localhost:8000
+# Server at http://localhost:8080 (docker-compose.yml maps port 8080 to the app)
 ```
 
 ---
@@ -102,22 +117,39 @@ The server runs under a signed licence. An Ed25519 public key is built into the 
 - Data is never deleted on expiry. Uploading a valid licence restores full service instantly.
 - The web app polls `/license` every 10 seconds. When the licence expires, it shows "Licence expired. Contact your provider." When a valid licence is uploaded, the app recovers by itself.
 
-**Live demo steps:**
+**Live demo steps** (run from the repository folder; set `URL` to `http://127.0.0.1:8000` locally, `http://localhost:8080` with Docker, or the live address):
 
 ```bash
+URL=http://127.0.0.1:8000
+
 # 1. Check health and licence
 curl $URL/health
 curl $URL/license
 
-# 2. Install a 5-minute licence
+# 2. Install a 5-minute licence (operator only: needs the private key, which is not in this repository)
 python tools/make_license.py --licensee "Demo Bank" --minutes 5 > lic5.json
 curl -X POST $URL/license -H 'content-type: application/json' --data @lic5.json
+#    Without the key, install the signed licence that has already expired:
+curl -X POST $URL/license -H 'content-type: application/json' --data @licenses/expired.json
 
 # 3. Wait for expiry → lookups return 403
 curl "$URL/lookup?type=phone&value=1930"
 
 # 4. Restore with the long licence → service recovers, no restart
 curl -X POST $URL/license -H 'content-type: application/json' --data @licenses/long.json
+curl "$URL/lookup?type=phone&value=1930"
+```
+
+The same steps in Windows PowerShell (step 3 shows the 403 as an error):
+
+```powershell
+$URL = "http://127.0.0.1:8000"
+Invoke-RestMethod "$URL/health"
+Invoke-RestMethod "$URL/license"
+Invoke-RestMethod -Method Post -Uri "$URL/license" -ContentType "application/json" -InFile licenses\expired.json
+Invoke-RestMethod "$URL/lookup?type=phone&value=1930"
+Invoke-RestMethod -Method Post -Uri "$URL/license" -ContentType "application/json" -InFile licenses\long.json
+Invoke-RestMethod "$URL/lookup?type=phone&value=1930"
 ```
 
 ---
@@ -147,6 +179,8 @@ One line per request: time, method, path (without the query string), status, dur
 ## Proof
 
 All results below are from our own synthetic data and generators. They are not from the judges' tool and do not represent results on unknown data. We quote them as "in our tests".
+
+**Live run:** the attack scenarios sent over HTTP to the live server (31 Oct 2026, 21:48 IST, 2 seeds, 1,677 reports, 0 failures, 2 known limits): [tests/attack/LIVE_ATTACK_TABLE.txt](tests/attack/LIVE_ATTACK_TABLE.txt).
 
 ### Test commands
 
