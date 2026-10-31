@@ -7,12 +7,15 @@
    `personal_min_tokens` words. A voice that links 2+ reporter IDs is never personal:
    shared text and shared networks are what coordinated fakes look like.
 3. Weight: 0.5 for a new reporter, 1.0 when the reporter earlier reported a different,
-   confirmed number. Generic voices (empty, short or shared text) count half, and all of
-   them together add at most 1.0.
+   confirmed number. v1.3: an unlinked voice weighs the same with or without a note, so empty
+   notes or one example sentence never block an honest report. Shared text links writers only
+   when the copies arrive within `note_link_window_hours` of each other.
 4. KNOWN_SCAM needs at least 3 voices and at least 1.5 points.
 5. (v1.2) A coordinated burst, many brand-new voices from ONE area within a few hours that make up
    most of the voices on the number, counts as ONE linked voice. One signal alone (the number of
    people) never decides; time, area and track record must agree.
+   v1.3: a burst of brand-new voices with no words of their own also merges when it is spread over
+   areas.
 Map and alerts count only clean voices: one reporter, not spamming, and either own words
 or the earliest generic voice of that identifier.
 """
@@ -118,18 +121,39 @@ def build_voices(reports, cfg) -> list:
     for i, r in enumerate(reports):
         if r.note_hash:
             clusters[tfind(i)].append(i)
-    writers = {root: len({reports[i].rid for i in members}) for root, members in clusters.items()}
+    note_window = None if cfg.note_link_window_hours is None else timedelta(hours=cfg.note_link_window_hours)
+
+    def campaign(members, need):
+        """Members of one text cluster that sit in a time window holding `need`+ different writers.
+        v1.3: copies spread over days are what a test tool's example note looks like, not a campaign."""
+        if note_window is None:
+            return members if len({reports[i].rid for i in members}) >= need else []
+        seq = sorted(members, key=lambda i: (reports[i].t, reports[i].report_id))
+        marked, held, lo = set(), Counter(), 0
+        for hi, i in enumerate(seq):
+            held[reports[i].rid] += 1
+            while reports[i].t - reports[seq[lo]].t > note_window:
+                gone = reports[seq[lo]].rid
+                held[gone] -= 1
+                if not held[gone]:
+                    del held[gone]
+                lo += 1
+            if len(held) >= need:
+                marked.update(seq[lo:hi + 1])
+        return sorted(marked)
+
     need = cfg.note_link_min_reporters
+    linked_text = {root: campaign(members, need) for root, members in clusters.items()}
     # A campaign: several texts each pasted by many people on this one number. Then every
     # shared text, even one shared by only two people, is treated as copy-paste.
-    if cfg.note_campaign_clusters and sum(w >= need for w in writers.values()) >= cfg.note_campaign_clusters:
-        need = 2
+    if cfg.note_campaign_clusters and sum(bool(m) for m in linked_text.values()) >= cfg.note_campaign_clusters:
+        linked_text = {root: campaign(members, 2) for root, members in clusters.items()}
     copy_paste = False
-    for root, members in clusters.items():
-        if writers[root] >= need:
+    for marked in linked_text.values():
+        if marked:
             copy_paste = True
-            for i in members[1:]:
-                union(members[0], i)
+            for i in marked[1:]:
+                union(marked[0], i)
 
     groups = defaultdict(list)
     for i in range(n):
@@ -157,7 +181,7 @@ def score(voices, proven, cfg) -> tuple:
     personal_q = generic_q = linked_q = 0
     for v, is_proven in zip(voices, proven):
         w = cfg.weight_proven_q if is_proven else cfg.weight_new_q
-        if v.personal:
+        if v.personal or (cfg.generic_full_weight and not v.linked):
             personal_q += w
         elif v.linked:
             linked_q += w // 2
@@ -184,6 +208,16 @@ def burst_core(voices, cfg, eligible=None) -> list:
     best = []
     for pin in sorted(by_area):
         seq = sorted(by_area[pin])
+        lo = 0
+        for hi in range(len(seq)):
+            while seq[hi][0] - seq[lo][0] > window:
+                lo += 1
+            if hi - lo + 1 > len(best):
+                best = [i for _, _, i in seq[lo:hi + 1]]
+    if cfg.ring_generic_any_area:
+        # v1.3: brand-new voices with no words of their own, arriving together, from any area.
+        seq = sorted((v.first.t, v.first.report_id, i) for i, v in enumerate(voices)
+                     if (eligible is None or eligible[i]) and not v.personal)
         lo = 0
         for hi in range(len(seq)):
             while seq[hi][0] - seq[lo][0] > window:
