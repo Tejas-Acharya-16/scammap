@@ -173,8 +173,9 @@ MAX_BODY_BYTES = 16 * 1024  # 16 KiB request body limit (one report is well unde
 REGISTRY = Registry.from_dir(Path(__file__).parent / "data")
 INDEX_HTML = Path(__file__).parent / "static" / "index.html"
 JUDGE_HTML = Path(__file__).parent / "static" / "judge.html"
+LIVE_HTML = Path(__file__).parent / "static" / "live.html"
 THEME_CSS = Path(__file__).parent / "static" / "theme.css"   # the shared look of / and /judge
-PAGES = frozenset({"/", "/judge"})  # served on GET only; exempt from the licence gate
+PAGES = frozenset({"/", "/judge", "/live"})  # served on GET only; exempt from the licence gate
 
 # Which deploy is answering (headers on /health)
 COMMIT = os.environ.get("RENDER_GIT_COMMIT", "dev")[:7]
@@ -377,7 +378,8 @@ class BodySizeLimitMiddleware:
 
 
 CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
-       "style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; "
+       "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+       "img-src 'self' data: https://*.basemaps.cartocdn.com; connect-src 'self'; "
        "frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
 SECURITY_HEADERS = {
     "Content-Security-Policy": CSP,
@@ -484,6 +486,12 @@ def judge():
     return FileResponse(JUDGE_HTML, media_type="text/html")
 
 
+@app.get("/live")
+def live_page():
+    # The live scam map. Exempt from the licence gate like "/"; its data route /live/summary is gated.
+    return FileResponse(LIVE_HTML, media_type="text/html")
+
+
 @app.get(STATIC_PREFIX + "/theme.css")
 def theme_css():
     # One stylesheet for both pages. Under /static, so it loads while the licence is expired too.
@@ -544,6 +552,13 @@ def map_view(pincode: str | None = None, days: str | None = None, radius_km: str
 @app.get("/alerts")
 def alerts(pincode: str | None = None):
     status, reply = ENGINE.alerts(pincode, clock.now())
+    return JSONResponse(reply, status_code=status)
+
+
+@app.get("/live/summary")
+def live_summary(days: str | None = None):
+    # The live scam map's data: areas, top scam types, most reported numbers, alerts. Licence-gated.
+    status, reply = ENGINE.live_summary(clock.now(), days)
     return JSONResponse(reply, status_code=status)
 
 
