@@ -106,7 +106,7 @@ body{background:var(--bg);color:var(--ink);margin:0}
         <p class="note" data-t="numNote">Shown in full only after 3 different people reported them. A business can dispute a listing.</p></div>
     </div>
   </div>
-  <p class="note" data-t="foot">Area centre points only. We never store or show where a person is. Map data © OpenStreetMap contributors, tiles © CARTO.</p>
+  <p class="note" data-t="foot">Area centre points only. We never store or show where a person is. Map data and tiles © OpenStreetMap contributors.</p>
 </div>
 <div id="expired" class="hidden"><div><p>Licence expired. Contact your provider.</p><div>लाइसेंस समाप्त हो गया है। अपने प्रदाता से संपर्क करें।</div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -120,7 +120,7 @@ const S = {
        vBlr:"Bengaluru", vInd:"India", sevC:"Critical", sevH:"High", sevM:"Medium",
        topH:"Top scams this week", alH:"Alerts now", alSub:"last 24 hours", numH:"Most reported numbers", numSub:"3+ independent people",
        numNote:"Shown in full only after 3 different people reported them. A business can dispute a listing.",
-       foot:"Area centre points only. We never store or show where a person is. Map data © OpenStreetMap contributors, tiles © CARTO.",
+       foot:"Area centre points only. We never store or show where a person is. Map data and tiles © OpenStreetMap contributors.",
        live:"Live", updated:"updated", offline:"Reconnecting…", noTop:"No reports in the last 7 days yet.", noAlerts:"Nothing unusual right now.",
        noNums:"No number has 3 independent reports this week.", areasN:"{n} areas", areas1:"1 area", wk:"this week", day:"last 24 h",
        spike:"Sudden jump in {a}: {n} reports today, usually {b} a day", newType:"New kind of scam in {a}: {t}",
@@ -133,7 +133,7 @@ const S = {
        vBlr:"बेंगलुरु", vInd:"भारत", sevC:"गंभीर", sevH:"उच्च", sevM:"मध्यम",
        topH:"इस हफ़्ते के मुख्य स्कैम", alH:"अभी के अलर्ट", alSub:"पिछले 24 घंटे", numH:"सबसे ज़्यादा रिपोर्ट किए गए नंबर", numSub:"3+ अलग लोग",
        numNote:"पूरा नंबर तभी दिखता है जब 3 अलग लोगों ने रिपोर्ट किया हो। कोई व्यवसाय आपत्ति दर्ज कर सकता है।",
-       foot:"सिर्फ़ इलाके का केंद्र। हम किसी व्यक्ति की जगह न रखते हैं, न दिखाते हैं। नक्शा डेटा © OpenStreetMap योगदानकर्ता, टाइल © CARTO।",
+       foot:"सिर्फ़ इलाके का केंद्र। हम किसी व्यक्ति की जगह न रखते हैं, न दिखाते हैं। नक्शा डेटा और टाइल © OpenStreetMap योगदानकर्ता।",
        live:"लाइव", updated:"अपडेट", offline:"फिर से जुड़ रहे हैं…", noTop:"पिछले 7 दिनों में अभी कोई रिपोर्ट नहीं।", noAlerts:"अभी कुछ असामान्य नहीं।",
        noNums:"इस हफ़्ते किसी नंबर की 3 अलग रिपोर्ट नहीं हैं।", areasN:"{n} इलाके", areas1:"1 इलाका", wk:"इस हफ़्ते", day:"पिछले 24 घंटे",
        spike:"{a} में अचानक बढ़ोतरी: आज {n} रिपोर्ट, आमतौर पर रोज़ {b}", newType:"{a} में नए तरह का स्कैम: {t}",
@@ -167,9 +167,11 @@ $("l-en").onclick = () => setLang("en"); $("l-hi").onclick = () => setLang("hi")
 function initMap() {
   if (!window.L) { $("fallback").style.display = "block"; return; }
   map = L.map("map", {zoomControl: true, attributionControl: true, scrollWheelZoom: false}).setView([12.95, 77.62], 11);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-    maxZoom: 18, subdomains: "abcd", referrerPolicy: "strict-origin-when-cross-origin",
-    attribution: "&copy; OpenStreetMap contributors &copy; CARTO"}).addTo(map);
+  // OpenStreetMap's own tile server: no API key. Its policy asks for visible credit and a Referer
+  // (the page itself sends none, so the tiles ask for the origin only).
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19, referrerPolicy: "strict-origin-when-cross-origin",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'}).addTo(map);
   layer = L.layerGroup().addTo(map);
 }
 function areaTip(a) {

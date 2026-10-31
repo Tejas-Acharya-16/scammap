@@ -11,7 +11,7 @@ import httpx
 ROOT = Path(__file__).resolve().parents[2]
 CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
        "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
-       "img-src 'self' data: https://*.basemaps.cartocdn.com; connect-src 'self'; frame-ancestors 'none'; "
+       "img-src 'self' data: https://tile.openstreetmap.org; connect-src 'self'; frame-ancestors 'none'; "
        "base-uri 'none'; form-action 'self'")
 
 
