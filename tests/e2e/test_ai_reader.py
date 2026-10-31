@@ -101,7 +101,11 @@ def test_check_shows_the_ai_reading_apart_from_the_verdict(base_url, api, new_pa
     page = open_app(new_page, base_url, "/#check")
     page.fill("#q", number)
     page.evaluate(PASTE, KYC + " Call " + number + " now.")              # the message the number came from
-    page.tap("#go")
+    chips = page.locator("#qfoundchips button")                          # paste-anything (if merged) lists what it found
+    if chips.count():
+        chips.filter(has_text=number).first.tap()
+    else:
+        page.tap("#go")
     page.wait_for_selector("#result .verdict")
     page.wait_for_selector("#aiq:not(.hidden)")
     assert page.inner_text("#result .verdict") == "Suspicious"           # the server's verdict, unchanged
