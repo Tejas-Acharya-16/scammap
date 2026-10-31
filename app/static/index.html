@@ -30,6 +30,9 @@ textarea{min-height:48px;resize:vertical}
 .chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
 .app .mono{font-size:17px;margin:10px 0 6px;letter-spacing:-.01em;overflow-wrap:anywhere}
 .advice{background:var(--amber-soft);border:1px solid var(--amber-line);border-radius:12px;padding:10px 12px;margin-top:12px;font-size:14px;color:#5B3B00}
+.ai{border:1px dashed var(--line-2);border-radius:12px;padding:10px 12px;margin-top:12px;font-size:14px;color:var(--ink-2)}
+.ai b{color:var(--ink)}.ai ul{margin:6px 0 0;padding-left:18px}.ai li{margin:2px 0}
+.ai.high{border-style:solid;border-color:var(--amber-line);background:var(--amber-soft)}
 .app .card>b:first-child{display:block;font-size:15px;margin-bottom:6px}
 .cluster{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding:10px 0}
 .cluster:last-child{border-bottom:0}
@@ -117,6 +120,7 @@ none:"No alerts here.",noClusters:"No reports near this area in the last 7 days.
 disputeSent:"Dispute received. It is under review.",bizName:"Business name (optional)",bizMail:"Contact email (optional)",send:"Send dispute",
 KNOWN_SCAM:"Known scam",SUSPICIOUS:"Suspicious",NO_REPORTS:"No reports",VERIFIED_BUSINESS:"Verified business",
 sKNOWN:"Reported by {n} people.",sSUSP:"Reported by {n} {p}. Not enough to confirm.",sBurst:"Reported {n} times, mostly by new accounts from one area within a few hours. We count a burst like this as one voice until other people confirm it. Stay careful.",sNONE:"No reports yet. That does not mean it is safe.",sVER:"Verified business: {l}",
+aiHigh:"AI watchdog: these reports look coordinated ({p}%). Flagged for a person to review. The answer above comes from the rules, not the AI.",aiMed:"AI watchdog: some signs of coordination ({p}%). The answer above comes from the rules, not the AI.",aiLow:"AI watchdog: these look like independent reports ({p}% coordinated).",
 person:"person",people:"people",review:"A business disputed this. Under review.",last:"Last reported",
 spike:"Scam reports here jumped: {c} in 24 hours (usual {b} a day).",newtype:"New kind of scam here: {t}.",
 now:"Just now",today:"Today",yday:"Yesterday",earlier:"Earlier",phone:"Phone",upi:"UPI ID",url:"Link",sender_id:"SMS sender",
@@ -133,6 +137,7 @@ none:"यहाँ कोई अलर्ट नहीं।",noClusters:"पि
 disputeSent:"आपत्ति मिली। समीक्षा जारी है।",bizName:"व्यवसाय का नाम (वैकल्पिक)",bizMail:"संपर्क ईमेल (वैकल्पिक)",send:"आपत्ति भेजें",
 KNOWN_SCAM:"ज्ञात स्कैम",SUSPICIOUS:"संदिग्ध",NO_REPORTS:"कोई रिपोर्ट नहीं",VERIFIED_BUSINESS:"सत्यापित व्यवसाय",
 sKNOWN:"{n} लोगों ने रिपोर्ट किया।",sSUSP:"{n} {p} ने रिपोर्ट किया। पुष्टि के लिए काफ़ी नहीं।",sBurst:"{n} बार रिपोर्ट किया गया, ज़्यादातर एक ही इलाके के नए अकाउंट से, कुछ ही घंटों में। जब तक दूसरे लोग पुष्टि न करें, हम ऐसी रिपोर्टों को एक आवाज़ मानते हैं। सावधान रहें।",sNONE:"अभी कोई रिपोर्ट नहीं। इसका मतलब यह नहीं कि यह सुरक्षित है।",sVER:"सत्यापित व्यवसाय: {l}",
+aiHigh:"AI निगरानी: ये रिपोर्ट सुनियोजित लगती हैं ({p}%)। एक व्यक्ति इनकी जाँच करेगा। ऊपर का जवाब नियमों से है, AI से नहीं।",aiMed:"AI निगरानी: सुनियोजित होने के कुछ संकेत ({p}%)। ऊपर का जवाब नियमों से है, AI से नहीं।",aiLow:"AI निगरानी: ये अलग-अलग लोगों की स्वतंत्र रिपोर्ट लगती हैं ({p}% सुनियोजित)।",
 person:"व्यक्ति",people:"लोगों",review:"एक व्यवसाय ने आपत्ति की है। समीक्षा जारी है।",last:"आख़िरी रिपोर्ट",
 spike:"यहाँ स्कैम रिपोर्ट अचानक बढ़ीं: 24 घंटे में {c} (आम तौर पर {b} रोज़)।",newtype:"यहाँ नया स्कैम: {t}।",
 now:"अभी",today:"आज",yday:"कल",earlier:"पहले",phone:"फ़ोन",upi:"UPI ID",url:"लिंक",sender_id:"SMS भेजने वाला",
@@ -192,12 +197,22 @@ function render(){document.documentElement.lang=lang;document.title=t("title");d
   b.onclick=()=>{whenSel=k;render()};$("when").appendChild(b)});
  for(const id of["parea","aarea"]){const cur=$(id).value||store.get("area")||"560102";$(id).innerHTML=AREAS.map(([p,a,c])=>`<option value="${p}">${a}, ${c}</option>`).join("");$(id).value=cur}
  typeChips($("qtype"),qType,k=>qType=k);typeChips($("rtype"),rType,k=>rType=k);paintPill()}
+const AI_HI={"linked_share+":"वही लोग या नेटवर्क बार-बार रिपोर्ट कर रहे हैं","new_share+":"रिपोर्ट करने वालों का कोई पिछला रिकॉर्ड नहीं","shared_net_share+":"कई रिपोर्ट गिने-चुने नेटवर्क से",
+"burst1_share+":"ज़्यादातर रिपोर्ट एक घंटे के अंदर","burst6_share+":"ज़्यादातर रिपोर्ट छह घंटे के अंदर","area_top_share+":"ज़्यादातर रिपोर्ट एक ही इलाके से","area_spread+":"हर रिपोर्ट अलग इलाके से",
+"empty_share+":"रिपोर्ट में अपने शब्द नहीं","dup_text_share+":"कई लोगों ने एक जैसा टेक्स्ट भेजा","short_span+":"सारी रिपोर्ट बहुत कम समय में","backdated+":"रिपोर्ट एक साथ दर्ज, पर कॉल अलग-अलग दिनों की बताई गईं",
+"dup_x_burst+":"एक जैसा टेक्स्ट, कुछ ही घंटों में","empty_x_burst+":"खाली रिपोर्ट, कुछ ही घंटों में","spread_x_burst+":"हर रिपोर्ट अलग इलाके से, एक ही घंटे में","new_x_burst+":"बिलकुल नए लोग, एक ही घंटे में",
+"linked_share-":"हर रिपोर्ट के पीछे अलग व्यक्ति","new_share-":"रिपोर्ट करने वालों का पिछला रिकॉर्ड है","shared_net_share-":"हर रिपोर्ट अलग नेटवर्क से","burst1_share-":"रिपोर्ट पूरे दिन में फैली हुई",
+"burst6_share-":"रिपोर्ट कई दिनों में फैली हुई","area_top_share-":"रिपोर्ट कई इलाकों से","area_spread-":"रिपोर्ट कुछ इलाकों में केंद्रित","empty_share-":"लोगों ने अपने शब्दों में लिखा",
+"dup_text_share-":"हर रिपोर्ट में अलग शब्द","short_span-":"रिपोर्ट लंबे समय में फैली हुई","backdated-":"रिपोर्ट कॉल के आसपास ही दर्ज हुई"};
+function aiHTML(a){if(!a||a.coordinated==null)return"";const p=Math.round(a.coordinated*100);const k=a.level==="high"?"aiHigh":a.level==="medium"?"aiMed":"aiLow";
+ const why=(a.signals||[]).map((s,i)=>"<li>"+esc(lang==="hi"&&AI_HI[(a.signal_codes||[])[i]]||s)+"</li>").join("");
+ return `<div class="ai${a.level==="high"?" high":""}" data-ai="${esc(a.level)}"><b>${t(k,{p})}</b>${why?"<ul>"+why+"</ul>":""}</div>`}
 function cardHTML(b){const n=b.distinct_reporters;
  const sent=b.trust&&b.trust.hold?t("sBurst",{n:b.report_count}):b.verdict==="KNOWN_SCAM"?t("sKNOWN",{n}):b.verdict==="SUSPICIOUS"?t("sSUSP",{n,p:n===1?t("person"):t("people")}):b.verdict==="NO_REPORTS"?t("sNONE"):t("sVER",{l:b.label||""});
  const adv=b.scam_type?(TYPES.find(a=>a[0]===b.scam_type)||TYPES[12])[lang==="hi"?4:3]:"";
  return `<span class="verdict v-${esc(b.verdict)}">${esc(t(b.verdict))}</span><div class="mono">${esc(b.display_value)}</div><div><b>${sent}</b></div>
  ${b.challenged?`<div class="muted">${t("review")}</div>`:""}${b.last_seen?`<div class="muted">${t("last")}: ${esc(fmtDay(b.last_seen))}${b.scam_type?" · "+esc(tname(b.scam_type)):""}</div>`:""}
- ${adv&&b.verdict!=="VERIFIED_BUSINESS"?`<div class="advice">${esc(adv)}</div>`:""}`}
+ ${adv&&b.verdict!=="VERIFIED_BUSINESS"?`<div class="advice">${esc(adv)}</div>`:""}${aiHTML(b.ai_watchdog)}`}
 async function check(value,type){const v=(value||"").trim();if(!v)return;const ty=type||detect(v);lastCheck=null;
  $("result").innerHTML='<div class="card muted">…</div>';
  let r;try{r=await api(`/lookup?type=${encodeURIComponent(ty)}&value=${encodeURIComponent(v)}`)}catch(e){$("result").innerHTML=`<div class="card err" data-t="net">${t("net")}</div>`;return}
