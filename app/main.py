@@ -25,7 +25,9 @@ from sqlalchemy import BigInteger, Boolean, Column, Integer, MetaData, Table, Te
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app import demo
+from app.attestation import Signer
 from app.engine import Engine, Registry
+from app.engine.normalise import normalise, normalise_type
 from app.license import LicenseState, EXEMPT_PATHS, STATIC_PREFIX
 
 # ── logging (section 10) ─────────────────────────────────────────────────────
@@ -198,6 +200,8 @@ def check_salt_for_database(db_url: str, salt: str) -> str:
 TRUST_SALT = check_salt_for_database(os.environ.get("DATABASE_URL", "sqlite:///./dev.db"), TRUST_SALT)
 
 ENGINE = Engine(REGISTRY, salt=TRUST_SALT)
+# Signed answers: the Ed25519 key is derived from TRUST_SALT (app/attestation.py). Never log it.
+SIGNER = Signer(TRUST_SALT)
 
 
 def _load_license_from_db(db: DB):
@@ -531,8 +535,21 @@ async def post_report(request: Request):
 
 @app.get("/lookup")
 def lookup(type: str | None = None, value: str | None = None):
-    status, reply = ENGINE.lookup(type, value, clock.now())
+    now = clock.now()
+    status, reply = ENGINE.lookup(type, value, now)
+    if status == 200:
+        # Extra field, existing fields unchanged: a signed copy of the answer (see "Signed answers" in the README).
+        reply["attestation"] = SIGNER.attest(
+            itype=reply["type"], canonical_value=normalise(normalise_type(type), value),
+            verdict=reply["verdict"], voices=reply["distinct_reporters"], report_count=reply["report_count"],
+            config=reply["trust"]["config"], now=now)
     return JSONResponse(reply, status_code=status)
+
+
+@app.get("/attestation/key")
+def attestation_key():
+    # The public half of the signing key. Behind the licence gate like the other API routes.
+    return JSONResponse(SIGNER.key_info())
 
 
 @app.get("/map")
