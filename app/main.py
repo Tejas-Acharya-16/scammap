@@ -167,7 +167,7 @@ def client_ip(request: Request) -> str | None:
 # ── globals built at start-up ────────────────────────────────────────────────
 TRUST_SALT = os.environ.get("TRUST_SALT", "")
 ALLOW_RESET = os.environ.get("ALLOW_RESET", "1").strip() in ("1", "true", "yes")
-MAX_BODY_BYTES = 64 * 1024  # 64 KiB request body limit
+MAX_BODY_BYTES = 16 * 1024  # 16 KiB request body limit (one report is well under 2 KiB)
 
 
 REGISTRY = Registry.from_dir(Path(__file__).parent / "data")
@@ -179,10 +179,22 @@ PAGES = frozenset({"/", "/judge"})  # served on GET only; exempt from the licenc
 COMMIT = os.environ.get("RENDER_GIT_COMMIT", "dev")[:7]
 STARTED_AT = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
-# Engine needs TRUST_SALT; fail fast if missing (unless testing with a default).
-if not TRUST_SALT:
-    TRUST_SALT = "dev-salt-insecure"
+
+def check_salt_for_database(db_url: str, salt: str) -> str:
+    """The salt keys every reporter and network hash. A public default would let anyone who can read
+    the database undo the hashes of guessable values (network prefixes), so only a local sqlite run
+    may fall back to one. A set but too short salt on sqlite is left to the engine, which refuses it."""
+    if len(salt) >= 8:
+        return salt
+    if not _make_db_url(db_url).startswith("sqlite"):
+        raise RuntimeError("TRUST_SALT must be set (at least 8 characters) when DATABASE_URL is not sqlite")
+    if salt:
+        return salt
     logger.warning("TRUST_SALT not set; using insecure default for local dev")
+    return "dev-salt-insecure"
+
+
+TRUST_SALT = check_salt_for_database(os.environ.get("DATABASE_URL", "sqlite:///./dev.db"), TRUST_SALT)
 
 ENGINE = Engine(REGISTRY, salt=TRUST_SALT)
 
@@ -259,39 +271,144 @@ async def lifespan(app: FastAPI):
     db_engine.dispose()
 
 
+async def _read_json(request: Request):
+    """request.json(), with lone surrogates replaced by "?". JSON text such as "\\ud800" parses into a
+    string that cannot be encoded to UTF-8, so hashing or storing it would fail with a 500. Paired
+    surrogates (an emoji) were already joined by the parser and are kept."""
+    body = await request.json()
+    return json.loads(json.dumps(body, ensure_ascii=False).encode("utf-8", "replace"))
+
+
 # ── FastAPI app ──────────────────────────────────────────────────────────────
-app = FastAPI(title="Community Scam Map", lifespan=lifespan, docs_url=None, redoc_url=None)
+# docs, redoc and openapi.json are off: the API is fixed and written in the README.
+app = FastAPI(title="Community Scam Map", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 
 
 # ── middleware ───────────────────────────────────────────────────────────────
 
+_KNOWN_PATHS: frozenset | None = None
+
+
+def loggable_path(path: str) -> str:
+    """Only the app's own routes are logged by name. Anything else is "(other)": a path is user input,
+    and it can hold line breaks (log forging) or a value someone typed into the address bar."""
+    global _KNOWN_PATHS
+    if _KNOWN_PATHS is None:
+        _KNOWN_PATHS = frozenset(r.path for r in app.routes if hasattr(r, "path"))
+    return path if path in _KNOWN_PATHS else "(other)"
+
+
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    """Log one line per request: time, method, path (no query), status, duration, req id.
-    No bodies, no IPs."""
+    """Log one line per request: time, method, route, status, duration, req id.
+    No bodies, no IPs, no query strings, no user-typed paths."""
 
     async def dispatch(self, request: Request, call_next):
         req_id = str(uuid.uuid4())[:8]
         start = time.monotonic()
         response = await call_next(request)
         elapsed_ms = (time.monotonic() - start) * 1000
-        # path only, no query string (privacy, section 10)
-        logger.info("%s %s %d %.0fms req=%s", request.method, request.url.path,
+        # route name only (privacy, section 10)
+        logger.info("%s %s %d %.0fms req=%s", request.method, loggable_path(request.url.path),
                     response.status_code, elapsed_ms, req_id)
         return response
 
 
-class BodySizeLimitMiddleware(BaseHTTPMiddleware):
-    """Reject requests with a body larger than MAX_BODY_BYTES."""
+_TOO_LARGE = json.dumps({"error": "request_too_large"}).encode()
 
-    async def dispatch(self, request: Request, call_next):
-        cl = request.headers.get("content-length")
-        if cl is not None:
+
+class BodySizeLimitMiddleware:
+    """Reject a request body larger than MAX_BODY_BYTES.
+
+    A declared Content-Length is checked up front. A body with no Content-Length (chunked) is counted
+    as the app reads it; when it passes the cap the app is given an empty end-of-body and whatever it
+    answers is replaced by 413, so a handler that swallows the read error cannot hide the overflow.
+    Pure ASGI, so it sees the real byte count, not just a header."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        declared = dict(scope["headers"]).get(b"content-length")
+        if declared is not None:
             try:
-                if int(cl) > MAX_BODY_BYTES:
-                    return JSONResponse({"error": "request_too_large"}, status_code=413)
+                if int(declared) > MAX_BODY_BYTES:
+                    await self._reply_413(send)
+                    return
             except ValueError:
                 pass
-        return await call_next(request)
+        state = {"total": 0, "over": False, "started": False}
+
+        async def counting_receive():
+            if state["over"]:
+                return {"type": "http.request", "body": b"", "more_body": False}
+            message = await receive()
+            if message["type"] == "http.request":
+                state["total"] += len(message.get("body", b""))
+                if state["total"] > MAX_BODY_BYTES:
+                    state["over"] = True
+                    return {"type": "http.request", "body": b"", "more_body": False}
+            return message
+
+        async def guarded_send(message):
+            if state["over"]:
+                if message["type"] == "http.response.start" and not state["started"]:
+                    state["started"] = True
+                    await self._reply_413(send)
+                return                      # drop the app's own answer
+            await send(message)
+
+        try:
+            await self.app(scope, counting_receive, guarded_send)
+        except Exception:
+            if state["over"] and not state["started"]:
+                await self._reply_413(send)
+            else:
+                raise
+
+    @staticmethod
+    async def _reply_413(send):
+        await send({"type": "http.response.start", "status": 413, "headers": [
+            (b"content-type", b"application/json"), (b"content-length", str(len(_TOO_LARGE)).encode())]})
+        await send({"type": "http.response.body", "body": _TOO_LARGE})
+
+
+CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+       "style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; "
+       "frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+SECURITY_HEADERS = {
+    "Content-Security-Policy": CSP,
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "X-Frame-Options": "DENY",
+    "Strict-Transport-Security": "max-age=31536000",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+}
+_SECURITY_HEADER_PAIRS = [(k.lower().encode(), v.encode()) for k, v in SECURITY_HEADERS.items()]
+_SECURITY_HEADER_NAMES = frozenset(k for k, _ in _SECURITY_HEADER_PAIRS)
+
+
+class SecurityHeadersMiddleware:
+    """Add the security headers to every HTTP response: pages, JSON, errors, the 403 licence answer.
+    The outermost middleware, so nothing an inner layer sends can skip it."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def send_with_headers(message):
+            if message["type"] == "http.response.start":
+                headers = [(k, v) for k, v in message.get("headers", []) if k.lower() not in _SECURITY_HEADER_NAMES]
+                message = {**message, "headers": headers + _SECURITY_HEADER_PAIRS}
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)
 
 
 class LicenseGateMiddleware(BaseHTTPMiddleware):
@@ -318,11 +435,12 @@ class LicenseGateMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-# Order: body size -> licence gate -> logging -> routes
+# Order: security headers -> body size -> licence gate -> logging -> routes
 # Middleware is applied in reverse order (last added = outermost)
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(LicenseGateMiddleware)
 app.add_middleware(BodySizeLimitMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 # ── 422→400 override ────────────────────────────────────────────────────────
@@ -330,6 +448,14 @@ app.add_middleware(BodySizeLimitMiddleware)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """The brief wants 400, not 422. Error messages never echo input."""
     return JSONResponse({"error": "invalid_body"}, status_code=400)
+
+
+# ── JSON 500 ─────────────────────────────────────────────────────────────────
+@app.exception_handler(Exception)
+async def server_error_handler(request: Request, exc: Exception):
+    """No stack trace, no detail, never the input. This handler runs outside the middleware stack, so
+    the security headers are added here as well."""
+    return JSONResponse({"error": "server_error"}, status_code=500, headers=SECURITY_HEADERS)
 
 
 # ── JSON 404 and 405 ────────────────────────────────────────────────────────
@@ -370,7 +496,7 @@ def get_license():
 @app.post("/license")
 async def post_license(request: Request):
     try:
-        body = await request.json()
+        body = await _read_json(request)
     except Exception:
         return JSONResponse({"error": "INVALID_LICENSE"}, status_code=400)
     if not isinstance(body, dict):
@@ -387,7 +513,7 @@ async def post_license(request: Request):
 @app.post("/reports")
 async def post_report(request: Request):
     try:
-        body = await request.json()
+        body = await _read_json(request)
     except Exception:
         return JSONResponse({"error": "invalid_body"}, status_code=400)
     status, reply = ENGINE.handle_report(
@@ -417,7 +543,7 @@ def alerts(pincode: str | None = None):
 @app.post("/challenges")
 async def post_challenge(request: Request):
     try:
-        body = await request.json()
+        body = await _read_json(request)
     except Exception:
         return JSONResponse({"error": "invalid_body"}, status_code=400)
     status, reply = ENGINE.handle_challenge(

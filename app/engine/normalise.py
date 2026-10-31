@@ -132,6 +132,10 @@ _SCHEME_RE = re.compile(r"^([a-z][a-z0-9+\-]*):", re.I)
 _BAD_SCHEMES = frozenset({"javascript", "data", "mailto", "file", "ftp", "tel", "sms", "intent",
                           "vbscript", "blob", "about", "chrome", "upi", "content"})
 _LABEL_RE = re.compile(r"^[a-z0-9¡-￿](?:[a-z0-9¡-￿\-]{0,61}[a-z0-9¡-￿])?$")
+# Unicode categories that cannot be part of a host name a person reads: control, format (direction marks and
+# overrides), surrogate, private use, unassigned, line and paragraph separators, spaces. Letters, digits and
+# combining marks of every script stay valid.
+_HOST_REFUSED = frozenset({"Cc", "Cf", "Cs", "Co", "Cn", "Zl", "Zp", "Zs"})
 _DEFANG_RE = re.compile(r"\[\.\]|\(\.\)|\[dot\]|\(dot\)", re.I)
 
 
@@ -169,6 +173,8 @@ def _url(raw: object) -> str:
             raise InvalidIdentifier("url")
         host_out = host if ip.version == 4 else f"[{host}]"
     else:
+        if any(unicodedata.category(ch) in _HOST_REFUSED for ch in host):
+            raise InvalidIdentifier("url")   # direction overrides, separators, private use, lone surrogates
         labels = host.split(".")
         if (host == "localhost" or host.endswith(".localhost") or len(labels) < 2
                 or labels[-1].isdigit() or not all(_LABEL_RE.match(x) for x in labels)):

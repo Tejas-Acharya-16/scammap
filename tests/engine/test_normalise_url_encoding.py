@@ -73,7 +73,7 @@ def test_existing_canonical_forms_are_unchanged(raw, want):
 
 def test_output_never_holds_an_html_significant_character():
     rng = random.Random(7)
-    alphabet = list("<>\"'`{}|\\^[]%&=/ ;:()abcXYZ019.-_~") + ["\ud800", "‮", "\x00", "é", "ह", "＜", "＞"]
+    alphabet = list("<>\"'`{}|\\^[]%&=/ ;:()abcXYZ019.-_~") + ["\ud800", "\u202e", "\x00", "é", "ह", "＜", "＞"]
     for _ in range(4000):
         v = "evil.example/" + "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 25)))
         try:
@@ -82,3 +82,35 @@ def test_output_never_holds_an_html_significant_character():
             continue
         assert not any(c in out for c in "<>\"'`{}|\\^ "), (v, out)
         assert all(0x20 < ord(c) < 0x7F for c in out.split("://", 1)[1].split("/", 1)[-1]), (v, out)
+
+
+# ---- hosts: invisible and direction-changing characters (display spoofing) --------------------
+@pytest.mark.parametrize("bad", [
+    "evil\u202eelpmaxe.com",      # right-to-left override: the link would read backwards
+    "evil\u200e.example",         # left-to-right mark
+    "evil\u2066x.example",        # isolate
+    "ev\ue000il.example",         # private use
+    "evil\uffff.example",         # not a character
+    "evil\ud800.example",         # lone surrogate
+    "evil\x00.example",
+])
+def test_host_with_control_format_or_separator_characters_is_refused(bad):
+    with pytest.raises(InvalidIdentifier):
+        url(bad)
+
+
+@pytest.mark.parametrize("ok,want", [
+    ("bücher.de/Über", "https://bücher.de/%C3%BCber"),
+    ("उदाहरण.परीक्षा/पथ", None),                      # Devanagari letters and combining marks stay valid
+    ("пример.рф", "https://пример.рф"),
+])
+def test_real_internationalised_hosts_still_work(ok, want):
+    out = url(ok)
+    if want:
+        assert out == want
+    assert out.startswith("https://")
+
+
+def test_a_line_separator_is_whitespace_and_is_stripped_like_a_space():
+    ls = chr(0x2028)
+    assert url("evil" + ls + ".example") == url("evil.example") == "https://evil.example"
