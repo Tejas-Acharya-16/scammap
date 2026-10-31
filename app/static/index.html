@@ -368,13 +368,20 @@ function repaint(){if(lastCheck&&$("cbody"))$("cbody").innerHTML=cardHTML(lastCh
 function setLang(l){lang=l;store.set("lang",l);render();repaint()}
 $("l-en").onclick=()=>setLang("en");$("l-hi").onclick=()=>setLang("hi");
 function chooseCheck(item){qType=item.type;$("q").value=item.value;showFound("qfound",false);check(item.value,item.type)}
-function pasteForCheck(e){e.preventDefault();const text=e.clipboardData?.getData("text/plain")||"";$("q").value=text;const candidates=ScamMapExtract.extractCandidates(text);qType=null;typeChips($("qtype"),qType,k=>qType=k);
+function pasteForCheck(e){e.preventDefault();const text=e.clipboardData?.getData("text/plain")||"";$("q").value=text;
+ if(asTyped(text)){qType=detect(text);typeChips($("qtype"),qType,k=>qType=k);showFound("qfound",false);check(text,qType);return}
+ const candidates=ScamMapExtract.extractCandidates(text);qType=null;typeChips($("qtype"),qType,k=>qType=k);
  if(candidates.length===1){chooseCheck(candidates[0]);return}if(candidates.length>1){showFound("qfound",true);foundChips($("qfoundchips"),candidates,null,chooseCheck);return}showFound("qfound",false)}
 function chooseReport(item,candidates){$("rv").value=item.value;rType=item.type;typeChips($("rtype"),rType,k=>rType=k);foundChips($("rfoundchips"),candidates,item.value,x=>chooseReport(x,candidates))}
 function pasteForReport(e){e.preventDefault();const text=e.clipboardData?.getData("text/plain")||"";const guess=ScamMapExtract.guessReport(text);channel=guess.channel;kind=guess.scamType;
  if(guess.candidate){$("rv").value=guess.candidate.value;rType=guess.candidate.type}else{$("rv").value="";rType=null}
  render();if(guess.candidates.length>1){showFound("rfound",true);foundChips($("rfoundchips"),guess.candidates,guess.candidate?.value,item=>chooseReport(item,guess.candidates))}else showFound("rfound",false)}
-$("go").onclick=()=>{const candidates=ScamMapExtract.extractCandidates($("q").value);if(candidates.length===1)chooseCheck(candidates[0]);else if(candidates.length>1){showFound("qfound",true);foundChips($("qfoundchips"),candidates,null,chooseCheck)}else check($("q").value,qType)};
+// One typed or pasted value (no spaces) is checked exactly as written, unless it is defanged (hxxp, [.]):
+// the server's own normaliser handles every other format, and cutting a value at a character the extractor
+// stops on (such as "<") would check a different value. A message with spaces goes through the extractor.
+const asTyped=v=>{v=String(v||"").trim();return !!v&&!/\s/.test(v)&&!/\[\.\]|^hxxps?:/i.test(v)};
+$("go").onclick=()=>{const v=$("q").value;if(asTyped(v)){showFound("qfound",false);check(v,qType);return}
+ const candidates=ScamMapExtract.extractCandidates(v);if(candidates.length===1)chooseCheck(candidates[0]);else if(candidates.length>1){showFound("qfound",true);foundChips($("qfoundchips"),candidates,null,chooseCheck)}else check(v,qType)};
 $("q").onpaste=pasteForCheck; $("q").onkeydown=e=>{if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();$("go").click()}};$("q").oninput=()=>{qType=detect($("q").value);typeChips($("qtype"),qType,k=>qType=k);showFound("qfound",false)};
 $("rv").onpaste=pasteForReport;$("rv").oninput=()=>{rType=detect($("rv").value);typeChips($("rtype"),rType,k=>rType=k);showFound("rfound",false)};$("post").onclick=post;$("aarea").onchange=loadArea;
 $("resetid").onclick=e=>{e.preventDefault();store.set("rid","");rid()};
