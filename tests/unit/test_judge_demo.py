@@ -102,3 +102,12 @@ def test_health_names_the_running_instance(client):
     r = client.get("/health")
     assert r.json() == {"ok": True}
     assert r.headers["x-commit"] and r.headers["x-started"]
+
+
+def test_live_summary_route(client):
+    r = client.get("/live/summary")
+    assert r.status_code == 200
+    assert set(r.json()) >= {"updated_at", "areas", "top_types", "top_numbers", "alerts", "total"}
+    assert client.post("/live/summary").status_code == 405
+    install_expired(client)
+    assert client.get("/live/summary").status_code == 403

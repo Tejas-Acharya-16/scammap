@@ -547,6 +547,13 @@ def alerts(pincode: str | None = None):
     return JSONResponse(reply, status_code=status)
 
 
+@app.get("/live/summary")
+def live_summary(days: str | None = None):
+    # The live scam map's data: areas, top scam types, most reported numbers, alerts. Licence-gated.
+    status, reply = ENGINE.live_summary(clock.now(), days)
+    return JSONResponse(reply, status_code=status)
+
+
 @app.post("/challenges")
 async def post_challenge(request: Request):
     try:
