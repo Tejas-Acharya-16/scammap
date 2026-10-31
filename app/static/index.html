@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
 <title>Community Scam Map</title>
 <link rel="stylesheet" href="/static/theme.css">
+<script src="/static/ai/reader.js"></script>
 <style>
 /* The app's own layout and phone screens. The shared look (colours, header, cards, buttons) is in /static/theme.css. */
 .stage{padding:14px 16px 40px}
@@ -34,6 +35,14 @@ textarea{min-height:48px;resize:vertical}
 .cluster{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding:10px 0}
 .cluster:last-child{border-bottom:0}
 .cluster>span:last-child{flex-shrink:0;white-space:nowrap}
+/* AI reading of a pasted message: a suggestion, shown apart from the verdict */
+.ai{margin-top:12px;padding:12px 14px;border:1px dashed var(--accent-line);border-radius:14px;background:var(--surface-2);font-size:14px;line-height:1.45}
+.ai-h{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px}.ai-h b{font-size:14.5px}
+.ai-tag{font-size:11.5px;font-weight:700;color:var(--amber);background:var(--amber-soft);border:1px solid var(--amber-line);border-radius:var(--pill);padding:2px 8px}
+.ai-type{margin:4px 0}.ai-words{margin:4px 0;color:var(--muted);overflow-wrap:anywhere}.ai .mono{font-size:13px;margin:0;color:var(--ink)}
+.ai-flags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.flag{font-size:12.5px;font-weight:600;color:var(--warn-text);background:var(--warn-soft);border:1px solid var(--warn-line);border-radius:var(--pill);padding:3px 9px}
+.ai-pre{margin:8px 0 0;color:var(--accent-text);font-weight:600}.ai .muted{margin:6px 0 0;font-size:12.5px}
 .sev{display:inline-block;font-size:12px;font-weight:700;padding:3px 9px;border-radius:var(--pill);border:1px solid}
 .CRIT{background:var(--warn);border-color:var(--warn);color:#fff}.HIGH{background:var(--amber-soft);border-color:var(--amber-line);color:var(--amber)}.MED{background:var(--gray-soft);border-color:var(--gray-line);color:var(--gray)}
 #expired{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;text-align:center;
@@ -85,12 +94,14 @@ textarea{min-height:48px;resize:vertical}
     <button class="btn" id="go" data-t="checkBtn"></button>
   </div>
   <div id="result"></div>
+  <div id="aiq" class="ai hidden" aria-live="polite"></div>
 </section>
 <section id="report">
   <div class="card" id="rform">
     <label data-t="how"></label><div class="tiles" id="channels"></div>
     <label for="rv" data-t="what"></label><input id="rv" autocomplete="off">
     <div class="chips" id="rtype" style="margin-top:8px"></div>
+    <div id="air" class="ai hidden" aria-live="polite"></div>
     <label data-t="kind"></label><div class="tiles kinds" id="kinds"></div>
     <label data-t="when"></label><div class="chips" id="when"></div>
     <label for="parea" data-t="areaL"></label><select id="parea"></select>
@@ -124,7 +135,12 @@ sevCRIT:"Critical",sevHIGH:"High",sevMED:"Medium",otherKind:"Other kind",tag:"Re
 licW:"Licence",licOk:"valid",licExp:"expired",licBad:"not valid",sEyebrow:"What it does",sH1:"Check before you pay.",sH2:"Report in seconds.",
 sLead:"Paste a phone number, UPI ID, link or SMS sender to see how many different people reported it. Reporting takes a few taps, needs no login and stays anonymous.",
 sRulesH:"Trust rules",sR1:"People, not reports: the same device, network or copied note counts once.",sR2:"A burst of new accounts in one area counts as one voice until others confirm.",
-sR3:"Known scam needs 3 or more independent people. Until then the number stays masked.",sJudge:"Open the judge console",sReadme:"README and code"},
+sR3:"Known scam needs 3 or more independent people. Until then the number stays masked.",sJudge:"Open the judge console",sReadme:"README and code",
+aiH:"AI reading of this message",aiNote:"AI suggestion, can be wrong",aiLooks:"Looks like:",aiSure:"{p}% sure",aiNotScam:"Not a scam pattern",
+aiOk:"No common scam pattern found ({p}% sure). That does not mean it is safe.",aiWords:"Words that drove it:",aiFlags:"Red flags:",
+aiLocal:"Read on this phone. The AI sends nothing.",aiPre:"Kind of scam set from this reading. Change it if it is wrong.",
+flag_urgency:"Pushes you to act fast",flag_payment:"Asks for money",flag_police:"Mentions police, court or arrest",flag_otp:"Asks for an OTP, PIN or code",
+flag_link:"Has a link",flag_prize:"Promises a prize",flag_job_deposit:"Job that asks for a deposit"},
 hi:{title:"स्कैम मैप",tCheck:"जाँचें",tReport:"रिपोर्ट करें",tArea:"मेरा इलाका",qLabel:"नंबर, UPI ID, लिंक या SMS भेजने वाला पेस्ट करें",checkBtn:"जाँचें",
 how:"उन्होंने कैसे संपर्क किया?",what:"नंबर, UPI ID, लिंक या भेजने वाला",kind:"स्कैम का प्रकार",when:"कब",areaL:"इलाका",note:"टिप्पणी (वैकल्पिक)",postBtn:"भेजें",
 anonInfo:"गुमनाम: न नाम, न फ़ोन, न लोकेशन।",resetId:"मेरी गुमनाम ID बदलें",alertsH:"अलर्ट",mapH:"इस इलाके के पास, पिछले 7 दिन",
@@ -140,7 +156,12 @@ sevCRIT:"गंभीर",sevHIGH:"उच्च",sevMED:"मध्यम",otherK
 licW:"लाइसेंस",licOk:"मान्य",licExp:"समाप्त",licBad:"अमान्य",sEyebrow:"यह क्या करता है",sH1:"पैसे भेजने से पहले जाँचें।",sH2:"सेकंडों में रिपोर्ट करें।",
 sLead:"फ़ोन नंबर, UPI ID, लिंक या SMS भेजने वाला पेस्ट करें और देखें कि कितने अलग-अलग लोगों ने उसकी रिपोर्ट की है। रिपोर्ट करने में कुछ ही टैप लगते हैं, लॉगिन नहीं चाहिए और आपकी पहचान गुमनाम रहती है।",
 sRulesH:"भरोसे के नियम",sR1:"रिपोर्ट नहीं, लोग गिने जाते हैं: एक ही डिवाइस, नेटवर्क या कॉपी किया गया नोट एक बार गिना जाता है।",sR2:"एक इलाके से अचानक आए नए अकाउंट एक ही आवाज़ माने जाते हैं, जब तक दूसरे लोग पुष्टि न करें।",
-sR3:"ज्ञात स्कैम के लिए कम से कम 3 अलग-अलग लोग चाहिए। तब तक नंबर छिपा रहता है।",sJudge:"जज कंसोल खोलें",sReadme:"README और कोड"}};
+sR3:"ज्ञात स्कैम के लिए कम से कम 3 अलग-अलग लोग चाहिए। तब तक नंबर छिपा रहता है।",sJudge:"जज कंसोल खोलें",sReadme:"README और कोड",
+aiH:"इस मैसेज पर AI की राय",aiNote:"AI का सुझाव, गलत हो सकता है",aiLooks:"ऐसा लगता है:",aiSure:"{p}% भरोसा",aiNotScam:"स्कैम पैटर्न नहीं",
+aiOk:"कोई आम स्कैम पैटर्न नहीं मिला ({p}% भरोसा)। इसका मतलब यह नहीं कि यह सुरक्षित है।",aiWords:"इन शब्दों से अंदाज़ा:",aiFlags:"ख़तरे के संकेत:",
+aiLocal:"यह इसी फ़ोन पर पढ़ा गया। AI कुछ नहीं भेजता।",aiPre:"स्कैम का प्रकार इसी राय से चुना गया है। गलत हो तो बदल दें।",
+flag_urgency:"जल्दी करने का दबाव",flag_payment:"पैसे माँगता है",flag_police:"पुलिस, कोर्ट या गिरफ्तारी का ज़िक्र",flag_otp:"OTP, PIN या कोड माँगता है",
+flag_link:"इसमें लिंक है",flag_prize:"इनाम का लालच",flag_job_deposit:"नौकरी के लिए पैसे जमा करवाता है"}};
 const CH=[["Phone call","📞","फ़ोन कॉल"],["SMS or WhatsApp","💬","SMS या WhatsApp"],["QR code","🔳","QR कोड"],["Fake website","🌐","नकली वेबसाइट"],["UPI request","₹","UPI अनुरोध"],["Something else","❔","कुछ और"]];
 const TYPES=[["digital-arrest","Digital arrest (fake police)","डिजिटल अरेस्ट (नकली पुलिस)","No officer arrests anyone over a video call. Hang up and call 1930.","कोई भी अफ़सर वीडियो कॉल पर किसी को गिरफ़्तार नहीं करता। कॉल काटें और 1930 पर कॉल करें।"],
 ["fake-kyc-link","Fake KYC link","नकली KYC लिंक","Banks never ask for KYC through SMS links. Open your bank's own app.","बैंक कभी SMS लिंक से KYC नहीं माँगते। अपने बैंक का ही ऐप खोलें।"],
@@ -187,7 +208,7 @@ function render(){document.documentElement.lang=lang;document.title=t("title");d
  $("channels").innerHTML="";CH.forEach(([v,ic,hi])=>{const b=document.createElement("button");b.className="tile"+(v===channel?" on":"");b.setAttribute("aria-pressed",v===channel);
   b.dataset.ch=v;b.innerHTML="<i>"+ic+"</i>"+(lang==="hi"?hi:v);b.onclick=()=>{channel=v;render()};$("channels").appendChild(b)});
  $("kinds").innerHTML="";TYPES.forEach(([k])=>{const [ic,en,hi]=KIND[k],b=document.createElement("button");b.className="tile"+(k===kind?" on":"");b.setAttribute("aria-pressed",k===kind);
-  b.dataset.kind=k;b.innerHTML="<i>"+ic+"</i>"+(lang==="hi"?hi:en);b.onclick=()=>{kind=k;render()};$("kinds").appendChild(b)});
+  b.dataset.kind=k;b.innerHTML="<i>"+ic+"</i>"+(lang==="hi"?hi:en);b.onclick=()=>{kind=k;kindTouched=true;render()};$("kinds").appendChild(b)});
  $("when").innerHTML="";["now","today","yday","earlier"].forEach(k=>{const b=document.createElement("button");b.className="chip"+(k===whenSel?" on":"");b.textContent=t(k);
   b.onclick=()=>{whenSel=k;render()};$("when").appendChild(b)});
  for(const id of["parea","aarea"]){const cur=$(id).value||store.get("area")||"560102";$(id).innerHTML=AREAS.map(([p,a,c])=>`<option value="${p}">${a}, ${c}</option>`).join("");$(id).value=cur}
@@ -198,7 +219,7 @@ function cardHTML(b){const n=b.distinct_reporters;
  return `<span class="verdict v-${esc(b.verdict)}">${esc(t(b.verdict))}</span><div class="mono">${esc(b.display_value)}</div><div><b>${sent}</b></div>
  ${b.challenged?`<div class="muted">${t("review")}</div>`:""}${b.last_seen?`<div class="muted">${t("last")}: ${esc(fmtDay(b.last_seen))}${b.scam_type?" · "+esc(tname(b.scam_type)):""}</div>`:""}
  ${adv&&b.verdict!=="VERIFIED_BUSINESS"?`<div class="advice">${esc(adv)}</div>`:""}`}
-async function check(value,type){const v=(value||"").trim();if(!v)return;const ty=type||detect(v);lastCheck=null;
+async function check(value,type){const v=(value||"").trim();if(!v)return;const ty=type||detect(v);lastCheck=null;aiShow("q");
  $("result").innerHTML='<div class="card muted">…</div>';
  let r;try{r=await api(`/lookup?type=${encodeURIComponent(ty)}&value=${encodeURIComponent(v)}`)}catch(e){$("result").innerHTML=`<div class="card err" data-t="net">${t("net")}</div>`;return}
  if(r.status===400){$("result").innerHTML=`<div class="card err" data-t="bad">${t("bad")}</div>`;return}if(r.status!==200)return;
@@ -217,7 +238,7 @@ async function post(){const v=$("rv").value.trim(),ty=rType||detect(v),pin=$("pa
  rmsg("");$("post").disabled=true;
  let r=null;try{r=await api("/reports",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)})}catch(e){}
  $("post").disabled=false;
- if(r&&r.status===201){store.set("area",pin);store.set("channel",channel);$("rv").value="";$("note").value="";rType=null;whenSel="now";render();showDone(v,ty)}
+ if(r&&r.status===201){store.set("area",pin);store.set("channel",channel);$("rv").value="";$("note").value="";rType=null;whenSel="now";aiReset();render();showDone(v,ty)}
  else if(r&&r.status===400)rmsg(r.body.error==="invalid_pincode"?"badArea":"bad");
  else if(!r||r.status!==403)rmsg("net")}
 async function showDone(v,ty){const my=++doneSeq;$("rform").classList.add("hidden");const d=$("rdone");d.className="";
@@ -249,6 +270,35 @@ $("rv").oninput=()=>{rType=detect($("rv").value);typeChips($("rtype"),rType,k=>r
 $("resetid").onclick=e=>{e.preventDefault();store.set("rid","");rid()};
 function route(){tab(location.hash==="#check"?"check":location.hash==="#area"?"area":"report")}
 window.addEventListener("hashchange",route);
+// ------------------------------------------------------------------ AI reading of a pasted message, on this phone only
+// ScamMapReader (static/ai/reader.js) suggests a kind of scam. It never changes a verdict and never sends the text:
+// its model file is fetched once at page load, before there is any text, and classifying makes no request.
+const aiText={q:"",r:""};let kindTouched=false,aiTimer=null;
+function aiHTML(res,pre){const pct=Math.min(99,Math.round(res.confidence*100));   // never "100% sure": it is a suggestion
+ const what=res.type==="not_scam"?`<div class="ai-type">${t("aiOk",{p:pct})}</div>`
+  :`<div class="ai-type">${t("aiLooks")} <b>${esc(tname(res.type))}</b> · ${t("aiSure",{p:pct})}</div>`;
+ const words=res.top_words.length?`<div class="ai-words">${t("aiWords")} ${res.top_words.map(w=>`<span class="mono">${esc(w)}</span>`).join(", ")}</div>`:"";
+ const flags=res.flags.length?`<div class="ai-flags" aria-label="${esc(t("aiFlags"))}">${res.flags.map(f=>`<span class="flag" data-flag="${esc(f)}">${esc(t("flag_"+f))}</span>`).join("")}</div>`:"";
+ return `<div class="ai-h"><b>${t("aiH")}</b><span class="ai-tag">${t("aiNote")}</span></div>${what}${words}${flags}`+
+  (pre?`<p class="ai-pre">${t("aiPre")}</p>`:"")+`<p class="muted">${t("aiLocal")}</p>`}
+function aiShow(which){const box=$(which==="q"?"aiq":"air");
+ const res=window.ScamMapReader?ScamMapReader.classify(which==="q"?aiText.q:aiText.r+" "+$("note").value):null;
+ if(!res){box.className="ai hidden";box.innerHTML="";return null}
+ const sure=which==="r"&&res.type!=="not_scam"&&res.confidence>=0.7&&!kindTouched&&!!KIND[res.type];
+ if(sure&&kind!==res.type){kind=res.type;render()}   // a suggestion only: one tap on another tile changes it
+ box.className="ai";box.innerHTML=aiHTML(res,sure);return res}
+function aiRefresh(){if(aiText.q&&!$("aiq").classList.contains("hidden"))aiShow("q");if((aiText.r+$("note").value).trim())aiShow("r")}
+function aiReset(){aiText.r="";kindTouched=false;clearTimeout(aiTimer);$("air").className="ai hidden";$("air").innerHTML=""}
+function aiSoon(){clearTimeout(aiTimer);aiTimer=setTimeout(()=>aiShow("r"),250)}
+const pasted=e=>(e.clipboardData&&e.clipboardData.getData("text/plain"))||"";
+$("q").addEventListener("input",()=>{aiText.q=$("q").value;$("aiq").className="ai hidden"});
+// capture: the pasted text is read before any other paste handler runs (one may replace it with the number it finds)
+$("q").addEventListener("paste",e=>{const s=pasted(e);if(s)aiText.q=s},true);
+$("rv").addEventListener("input",()=>{aiText.r=$("rv").value;aiSoon()});
+$("rv").addEventListener("paste",e=>{const s=pasted(e);if(s){aiText.r=s;setTimeout(()=>aiShow("r"),0)}},true);   // shown after the other handlers
+$("note").addEventListener("input",aiSoon);
+["l-en","l-hi"].forEach(id=>$(id).addEventListener("click",aiRefresh));
+if(window.ScamMapReader)ScamMapReader.load().then(ok=>{if(ok)aiRefresh()});
 render();route();licence();setInterval(licence,10000);
 </script>
 </body>

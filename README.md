@@ -114,6 +114,50 @@ We say these out loud. In our tests:
 
 ---
 
+## AI in ScamMap
+
+ScamMap has one AI part, and it runs on the phone: a reader for a message the person pastes. It suggests which kind of scam the message looks like. **It never sets, raises or lowers a verdict.** Verdicts come only from the trust rules on the server, and the server runs no model.
+
+- **What you see.** Paste a message into Check or Report. The app shows "AI reading of this message": the kind of scam it looks like, how sure it is, the 3 words that drove it, and red flags (pushes you to act fast, asks for money, mentions police, court or arrest, asks for an OTP, PIN or code, has a link, promises a prize, a job that asks for a deposit). It is labelled "AI suggestion, can be wrong", in English and Hindi.
+- **In Report** it pre-selects the kind of scam only when it is 0.7 sure or more and the person has not picked one. One tap on another tile changes it, and the reader does not change it back.
+- **The message never leaves the phone.** The model file (`app/static/ai/reader_model.json`, 123 KB) is downloaded once when the page loads, before there is any text. Classifying runs in the browser and makes no network request (a browser test routes and records every request to check this).
+- **The model.** Multinomial Naive Bayes on word unigrams and bigrams (lower case, digits removed, Devanagari kept), with the confidence calibrated on held-out folds. `tools/ai/train_reader.py` (standard library only) trains it on `tools/ai/messages.jsonl`: 591 synthetic messages in English, Hindi and Hinglish, 42 for each of the 12 scam types and 87 ordinary ones (bank OTP notices, deliveries, family chats).
+
+Cross-validated, **on our synthetic messages** (5 folds, stratified; `python tools/ai/train_reader.py` prints it all, with the confusion matrix):
+
+| Measure | Result |
+|---|---|
+| Accuracy | 72.1% |
+| Macro F1 | 0.72 |
+| Answers at 0.7 or more (the pre-select line) | 51% of messages, 90% of those right |
+| Ordinary messages read as a scam | 32 of 87; at 0.7 or more, 4 of 87 |
+| Scam messages read as ordinary | 14 of 504; at 0.7 or more, 2 of 504 |
+| 10 held-out messages, never in training (`tests/unit/data/ai_heldout.jsonl`) | 10 of 10 right |
+
+| Class | Precision | Recall | F1 | Messages |
+|---|---|---|---|---|
+| courier-customs | 0.70 | 0.71 | 0.71 | 42 |
+| digital-arrest | 0.54 | 0.64 | 0.59 | 42 |
+| electricity-disconnection | 0.73 | 0.86 | 0.79 | 42 |
+| fake-customer-care | 0.66 | 0.64 | 0.65 | 42 |
+| fake-kyc-link | 0.80 | 0.98 | 0.88 | 42 |
+| investment-group | 0.80 | 0.74 | 0.77 | 42 |
+| job-offer | 0.84 | 0.76 | 0.80 | 42 |
+| loan-app-harassment | 0.75 | 0.57 | 0.65 | 42 |
+| lottery-prize | 0.69 | 0.79 | 0.73 | 42 |
+| otp-call | 0.78 | 0.74 | 0.76 | 42 |
+| sextortion | 0.52 | 0.52 | 0.52 | 42 |
+| upi-refund-qr | 0.76 | 0.88 | 0.81 | 42 |
+| not_scam | 0.80 | 0.63 | 0.70 | 87 |
+
+Limits:
+- The messages are synthetic and written for this project (see DISCLOSURE), not real scam texts. Accuracy on real messages is unknown (UNVERIFIED).
+- The weakest classes share words: video-call blackmail, fake police and loan-app threats all talk about video, police, photos and contacts.
+- Naive Bayes is easy to steer: a message that avoids the usual words gets a low-confidence or wrong reading. That is why it only suggests.
+- It needs at least 3 words it knows; a bare number gets no reading. Red flags are simple patterns and can miss or misfire.
+
+---
+
 ## How the licence works
 
 The server runs under a signed licence. An Ed25519 public key is built into the server code. The private key never leaves the operator's machine and is never in this repository.
