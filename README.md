@@ -4,6 +4,7 @@ Report and verify scams in seconds, anonymously.
 
 **Live:** <https://scammap-yp1k.onrender.com>
 **Judge console:** <https://scammap-yp1k.onrender.com/judge>
+Judge console: /judge runs every scoring check on a sandbox copy of the engine.
 
 ---
 
@@ -150,14 +151,14 @@ All results below are from our own synthetic data and generators. They are not f
 ### Test commands
 
 ```bash
-# Engine unit tests (189 passed, 4 expected failures for known limits)
+# Engine unit tests (205 passed, 2 known limits)
 python -m pytest tests/engine -q
 
 # In-process attack table (60 seeds, ~20 seconds)
 python -m tests.engine.scenarios --seeds 60 --compare
 ```
 
-### Attack table (in our tests, config `eacc847a`)
+### Attack table (in our tests, config `76f35c12`)
 
 **Real waves — should be detected:**
 
@@ -174,6 +175,8 @@ python -m tests.engine.scenarios --seeds 60 --compare
 | 8 new, 4 on 2 shared networks, days apart | 60 | 100% detected |
 | 7 new, notes from a list of 10 texts | 60 | 98% detected |
 | 4 new, notes from a list of 10 texts | 60 | 98% detected |
+| 12 new within 3 hours, across 6 areas | 60 | 100% detected |
+| 20 friends in one hour + 3 real people elsewhere | 60 | 100% detected |
 
 **Tricks — should be stopped:**
 
@@ -192,13 +195,15 @@ python -m tests.engine.scenarios --seeds 60 --compare
 | 40 friends, notes from a list of 10 texts | 60 | 0% — stopped |
 | 3 attackers × 10 accounts, 3 networks | 60 | 0% — stopped |
 | 40 friends report a verified business | 60 | 0% — VERIFIED_BUSINESS held |
+| 1 person + 10 friends, own words, one area, 1 hour | 60 | 0% — stopped |
+| 40 friends, own varied notes, 40 networks, one area | 60 | 0% — stopped |
+| 40 friends, lightly reworded (up to 3 word swaps) | 60 | 0% — stopped |
 
 **Known limits (not stopped, in our tests):**
 
 | Scenario | Seeds | Result |
 |---|---|---|
-| 40 friends, own varied notes, 40 networks | 60 | 100% — not stopped |
-| 40 friends, lightly reworded (3 word swaps) | 60 | 100% — not stopped |
+| 1 person + 10 friends, each picks another area | 60 | 100% — not stopped |
 | 8 new, all empty notes | 60 | 0% detected (stays SUSPICIOUS) |
 
 **Alerts (in our tests, 15 seeds each):**
@@ -211,6 +216,11 @@ python -m tests.engine.scenarios --seeds 60 --compare
 | New type, 3 people | NEW_TYPE | 100% |
 | New type, 1 person in own words | NEW_TYPE | 100% |
 | Type seen 10 days ago | No NEW_TYPE | 100% |
+| 10 empty notes, one number | No alert | 100% |
+| 10 empty notes, 10 numbers | SPIKE | 100% |
+| Trick: 1 person + 10 friends, one area, 1 hour | No alert | 100% |
+| Trick: 40 friends, own varied notes, one area | No alert | 100% |
+| Trick: 40 friends, lightly reworded | No alert | 100% |
 | Every trick above in a quiet area | No alert | 100% |
 
 ---
