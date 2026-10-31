@@ -9,7 +9,8 @@ One website, two pages, one look:
 
 - **The app (`/`)**: Check, Report and My area, on a phone or a laptop. English and हिन्दी, icons for every choice, no login, no name, no phone number asked. On a laptop a side panel explains the trust rules and links to the judge console.
 - **The live scam map (`/live`)**: reports from the last 7 days by area on a street map, top scam types, live alerts and the most reported numbers (only ones 3+ independent people confirmed), refreshed every 10 seconds. Area centre points only; fake campaigns and repeat reports never appear.
-- **The judge console (`/judge`)**: one button runs every scoring check on a fresh sandbox copy of the engine (never the live data); read-only checks of the live API; the licence panel (upload `licenses/expired.json` to lock, `licenses/long.json` to unlock, no restart); a QR code that opens the app on your phone.
+- **The judge console (`/judge`)**: one button runs every scoring check, plus the AI watchdog checks, on a fresh sandbox copy of the engine (never the live data); read-only checks of the live API; the licence panel (upload `licenses/expired.json` to lock, `licenses/long.json` to unlock, no restart); a QR code that opens the app on your phone.
+- **AI watchdog**: every answer with 3+ reports carries an advisory AI opinion on whether the reports look coordinated, with its reasons. The rules decide; the AI never changes a verdict. See [The AI watchdog](#the-ai-watchdog-a-second-opinion-that-never-decides).
 - Security notes: [SECURITY.md](SECURITY.md). Libraries, services and AI tools: [DISCLOSURE.md](DISCLOSURE.md).
 
 ---
@@ -102,6 +103,61 @@ The system counts independent **voices**, not raw reports. A number is marked KN
 
 ---
 
+## The AI watchdog: a second opinion that never decides
+
+The rules above decide every verdict, so anyone can audit an answer. They are also fixed, and an attacker adapts. So every lookup with 3 or more reports also carries an **AI watchdog** opinion: how coordinated the reports look, from 0 to 1, a level (high from 0.8, medium from 0.5, else low), and up to 3 reasons in plain words. The app shows it under the answer in English or हिन्दी.
+
+```json
+"ai_watchdog": {"coordinated": 0.98, "level": "high",
+                "signals": ["filed together, but describing calls days apart",
+                            "a different area for every report", "reporters with no track record"],
+                "signal_codes": ["backdated+", "area_spread+", "new_share+"],
+                "model": "watchdog-v1", "advisory": true}
+```
+
+**What it is.** A logistic regression over 15 aggregate features of the stored reports (`app/engine/watchdog.py`), with its 15 weights in `app/data/watchdog_model.json`. Every feature points towards "coordinated", and training keeps every weight at zero or above, so no signal can count the wrong way: copied text can never make reports look more independent. It is not an LLM and calls nothing outside the server.
+
+**How it learned.** `python tools/train_watchdog.py` (standard library only, about 35 seconds) builds 120 synthetic worlds and plants 7,200 numbers in them, about half planted campaigns and half real waves. In each world, attackers choose each disguise separately: enough accounts or a few reused ones, aged accounts, one network or a proxy per report, patience over days, backdated calls, one area or a different area each, and pasted, reworded, canned, empty or original text. Real waves vary just as much: 3 to 50 people, over 1 hour to 2 weeks, in one area or anywhere, in their own words, with templates, with empty notes or with one example sentence. Both sides draw their size from the same range, so the number of reports says nothing, and the model never sees it.
+
+**Guardrails.**
+- It runs after the verdict, from stored reports only. A test and a judge-console check look up every number again with the watchdog switched off: the answers are identical apart from this one field.
+- It never sees a reporter's identity, a network, a note's words or a location finer than the area. It returns a number and phrases from a fixed list.
+- One shared filing stamp on every report (how bulk tools write test data) is not treated as backdating.
+- No model file means no opinion (`null`); the verdicts do not depend on it.
+
+**Results, in our simulator.** These are not real-world accuracy.
+
+| Test | Result |
+|---|---|
+| Held-out worlds (1,800 identifiers it never saw) | AUC 0.915; flags 81% of planted campaigns; wrongly flags 10% of real waves |
+| The gap it exists for: planted campaigns the rules confirmed anyway | 230 of 922 beat the rules; the watchdog flags 94 of them (41%) |
+| Real waves the rules confirmed | the watchdog wrongly flags 22 of 749 |
+| The 40 hand-written scenarios in the attack table (never trained on, 10 seeds) | flags 14 of 19 fake rows; 1 of 20 real rows (J6: 8 identical notes in 2 hours, which the rules also hold) |
+
+Its clearest catch is **backdating**: 12 accounts on 12 networks say the calls came over 5 days, but file all 12 reports within one hour. The rules see 12 people on different days and confirm the number. The watchdog says high (0.98): "filed together, but describing calls days apart". The judge console shows this as check AI3.
+
+**What it misses.** Friends who each write their own words and arrive together: in one area the rules stop them (rule 4) while the watchdog scores them only 0.2 to 0.3; when each picks a different area, neither layer stops them. Reports alone cannot tell them from a fast real wave.
+
+| Feature | Meaning | Weight |
+|---|---|---|
+| `backdated` | filed inside one hour, but describing calls spread wider | 1.40 |
+| `linked_share` | reports linked to another by the same reporter, network or copied text | 1.30 |
+| `area_top_share` | share from the busiest area | 0.71 |
+| `shared_net_share` | reports from a network another report already used | 0.68 |
+| `new_share` | voices with no track record | 0.63 |
+| `area_spread` | distinct areas per report | 0.58 |
+| `burst1_share` | most reports inside any one hour | 0.41 |
+| `dup_text_share` | reports whose exact text another reporter also sent | 0.31 |
+| `spread_x_burst` | a different area each, within one hour | 0.12 |
+| `empty_share` | reports with no words | 0.11 |
+| `burst6_share` | most reports inside any six hours | 0.00 |
+| `short_span` | all reports within a short time | 0.00 |
+| `dup_x_burst` | copied text, within six hours | 0.00 |
+| `empty_x_burst` | no words, within six hours | 0.00 |
+| `new_x_burst` | no track record, within one hour | 0.00 |
+
+---
+
 ## Known limits
 
 We say these out loud. In our tests:
@@ -111,6 +167,7 @@ We say these out loud. In our tests:
 - **A real local wave of 8 or more brand-new people in one area within 6 hours** waits as SUSPICIOUS until people from other areas, other days or with a track record confirm it.
 - **A small ring of 3 to 7** can still mark a number, and a ring can build a track record by first reporting numbers its members also report.
 - **People behind one network prefix within 24 hours** (a campus, carrier NAT, a family) count as one voice and add no weight.
+- **Backdated reports from many accounts and networks** (calls claimed over days, all filed within an hour) pass the rules. The AI watchdog flags them for review, but it never changes the verdict.
 
 ---
 
@@ -231,13 +288,13 @@ All results below are from our own synthetic data and generators. They are not f
 ### Test commands
 
 ```bash
-# Engine tests (256 passed, 2 known limits)
+# Engine tests (283 passed, 2 known limits)
 python -m pytest tests/engine -q
 
-# Everything except the browser tests (307 passed, 2 known limits)
+# Everything except the browser tests (336 passed, 2 known limits)
 python -m pytest tests -q --ignore=tests/e2e
 
-# Browser tests at phone size (25 passed; first run: python -m playwright install chromium)
+# Browser tests at phone size (29 passed; first run: python -m playwright install chromium)
 python -m pytest tests/e2e -q
 
 # In-process attack table (60 seeds, ~20 seconds)

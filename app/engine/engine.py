@@ -21,6 +21,8 @@ from .fingerprint import derive_key, identity_hash, network_prefix, note_fingerp
 from .normalise import InvalidIdentifier, mask, normalise, normalise_type
 from .registry import Registry
 from .timeutil import day_floor_ist, ensure_aware, iso_ist, parse_time
+from .watchdog import MIN_REPORTS as WATCH_MIN_REPORTS
+from .watchdog import Watchdog
 
 KNOWN_SCAM = "KNOWN_SCAM"
 SUSPICIOUS = "SUSPICIOUS"
@@ -179,6 +181,9 @@ class Engine:
         self._config_hash = self.config.hash()
         self._key = derive_key(salt)
         self._lock = threading.RLock()
+        # AI campaign watchdog: advisory only. It adds "ai_watchdog" to a lookup and never reads or
+        # changes the verdict. None (no model file) simply means no watchdog.
+        self.watchdog = Watchdog.load()
         self._clear()
 
     def _clear(self) -> None:
@@ -395,7 +400,16 @@ class Engine:
                                          "channel": v.first.channel,
                                          "scam_type": v.first.scam_type,
                                          "pincode": v.first.pincode} for v in latest]
+            # Computed after the verdict, from the stored reports only; nothing above reads it.
+            body["ai_watchdog"] = self._watch(ikey, reports)
             return 200, body
+
+    def _watch(self, ikey: str, reports: list):
+        """The AI campaign watchdog's advisory opinion, or None (no model, or under 3 reports)."""
+        if self.watchdog is None or len(reports) < WATCH_MIN_REPORTS:
+            return None
+        raw = self._voices(ikey)
+        return self.watchdog.assess(reports, raw, [self._proven(v, ikey) for v in raw])
 
     # ------------------------------------------------------------------ GET /map
     def map(self, pincode=None, days=None, radius_km=None, now=None) -> tuple:

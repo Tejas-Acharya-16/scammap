@@ -84,7 +84,7 @@ a{color:var(--accent-text)}
   <section class="card hero">
     <p class="eyebrow">Judge console</p>
     <h1>Check every scoring row on <em>one page</em></h1>
-    <p>Rows 1 to 4 and the bonus run in a <b>sandbox</b>: a fresh copy of the same engine and the same rules as this server, filled with new synthetic data on every run. It never reads or writes the live data, so you can run it as often as you like. Rows 5 to 7 and the live checks use this server directly.</p>
+    <p>Rows 1 to 4, the bonus and the AI watchdog run in a <b>sandbox</b>: a fresh copy of the same engine and the same rules as this server, filled with new synthetic data on every run. It never reads or writes the live data, so you can run it as often as you like. Rows 5 to 7 and the live checks use this server directly.</p>
     <p id="hiNote" class="note hidden" lang="hi">जज कंसोल अंग्रेज़ी में है: जाँच के नतीजे सर्वर से अंग्रेज़ी में आते हैं। ऐप पूरा हिन्दी में है।</p>
     <div class="runbar">
       <button id="runAll" class="btn">Run all checks</button>
@@ -146,7 +146,8 @@ a{color:var(--accent-text)}
 </main>
 <script>
 const REPO = "https://github.com/Tejas-Acharya-16/scammap";
-const ROWS = [[1, "Stops fake reports"], [2, "Checking a number"], [3, "Map and alerts"], [4, "Privacy"], ["bonus", "Bonus: verified list, disputes, no alerts from fakes"]];
+const ROWS = [[1, "Stops fake reports"], [2, "Checking a number"], [3, "Map and alerts"], [4, "Privacy"], ["bonus", "Bonus: verified list, disputes, no alerts from fakes"], ["AI", "AI watchdog: a second opinion that never decides"]];
+const tag = row => row === "bonus" ? "Bonus" : row === "AI" ? "AI" : "Row " + row;
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 
@@ -163,10 +164,16 @@ function lock(on) { $("lockBanner").className = on ? "banner" : "banner hidden";
 // ------------------------------------------------------------------ sandbox rows
 function placeholders() {
   $("rows").innerHTML = ROWS.map(([row, title]) =>
-    `<section class="card"><div class="sechead"><span class="rowtag">${row === "bonus" ? "Bonus" : "Row " + row}</span><h2>${esc(title)}</h2><span class="score idle">not run</span></div>
+    `<section class="card"><div class="sechead"><span class="rowtag">${esc(tag(row))}</span><h2>${esc(title)}</h2><span class="score idle">not run</span></div>
      <p class="muted">Press "Run all checks".</p></section>`).join("");
 }
 function gist(got) {
+  if (got && got.ai_watchdog) {
+    const a = got.ai_watchdog;
+    return `<span class="v v-${esc(got.verdict)}">${esc(got.verdict)}</span> · AI <b>${esc(a.level)}</b> ${esc(a.coordinated)}` +
+      (a.signals && a.signals.length ? `: ${esc(a.signals[0])}` : "");
+  }
+  if (got && got.verdicts_with_ai) return `with AI: ${esc(got.verdicts_with_ai.join(", "))} · without: ${esc(got.verdicts_without_ai.join(", "))}`;
   if (got && typeof got === "object" && !Array.isArray(got) && got.verdict) {
     let s = `<span class="v v-${esc(got.verdict)}">${esc(got.verdict)}</span> <code>${esc(got.display_value)}</code>`;
     if (got.report_count != null) s += ` · ${esc(got.report_count)} reports → ${esc(got.distinct_reporters)} independent`;
@@ -188,7 +195,7 @@ function gist(got) {
 function render(res) {
   $("rows").innerHTML = res.sections.map(sec => {
     const ok = sec.checks.filter(c => c.ok).length, all = sec.checks.length;
-    return `<section class="card"><div class="sechead"><span class="rowtag">${sec.row === "bonus" ? "Bonus" : "Row " + esc(sec.row)}</span><h2>${esc(sec.title)}</h2><span class="score ${ok === all ? "good" : "bad"}">${ok}/${all}</span></div>
+    return `<section class="card"><div class="sechead"><span class="rowtag">${esc(tag(sec.row))}</span><h2>${esc(sec.title)}</h2><span class="score ${ok === all ? "good" : "bad"}">${ok}/${all}</span></div>
       ${sec.checks.map(c => `<details class="chk ${c.ok ? "pass" : "fail"}"><summary><span class="mark" aria-label="${c.ok ? "pass" : "fail"}">${c.ok ? "✓" : "✗"}</span><span class="ct">${esc(c.title)}</span><span class="gist">${gist(c.got)}</span></summary>
         <div class="how"><b>How:</b> ${esc(c.how)}</div><div class="want"><b>Want:</b> ${esc(c.want)}</div><pre>${esc(JSON.stringify(c.got, null, 1))}</pre></details>`).join("")}
     </section>`;

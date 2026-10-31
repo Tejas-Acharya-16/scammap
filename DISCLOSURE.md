@@ -48,11 +48,17 @@ or earlier hackathons.
 ## AI tools
 
 They helped us write code, tests and documents. None of them runs inside the product: every verdict comes
-from deterministic code, and no model is called while the server answers a request.
+from deterministic code, and no outside model is called while the server answers a request.
+
+One model of our own does run inside the product: the **AI watchdog** (`app/engine/watchdog.py`). It is a
+logistic regression with 15 weights (`app/data/watchdog_model.json`) that we wrote and trained during the
+event with `tools/train_watchdog.py`, on our own synthetic simulator only, with the Python standard library.
+No third-party model, dataset or ML library. It is not an LLM, it is advisory only, and it never sets,
+raises or lowers a verdict.
 
 | Tool | What it helped with |
 |---|---|
-| Claude (claude.ai chat, Anthropic) | Planning, the trust engine and its tests (`app/engine`, `tests/engine`), the judge console sandbox, reviews, the security review |
+| Claude (claude.ai chat, Anthropic) | Planning, the trust engine and its tests (`app/engine`, `tests/engine`), the judge console sandbox, the AI watchdog (model code, attack simulator, training script), reviews, the security review |
 | Claude Code (Anthropic) | Server, licence, deployment, CI, web app changes, Playwright tests |
 | Google Antigravity (with the Claude and Gemini models it offers) | README, Docker files, the demo seed script, the video script |
 | OpenAI Codex | Black-box tests: live attack table, live lookup and privacy checks, input variants |
