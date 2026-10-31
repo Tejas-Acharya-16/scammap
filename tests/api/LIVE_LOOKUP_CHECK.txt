@@ -1,0 +1,18 @@
+Community Scam Map live lookup check
+Timestamp: 2026-10-31T23:17:48+05:30 IST
+Target host: scammap-yp1k.onrender.com
+No data-changing requests were sent.
+
+Format '+91 98765 43210': HTTP 200, verdict='NO_REPORTS', display_value='98XXXXX210'
+Format '09876543210': HTTP 200, verdict='NO_REPORTS', display_value='98XXXXX210'
+Format '9876543210': HTTP 200, verdict='NO_REPORTS', display_value='98XXXXX210'
+Format '+91-98765-43210': HTTP 200, verdict='NO_REPORTS', display_value='98XXXXX210'
+All four responses HTTP 200: PASS
+Same verdict: PASS
+Same display_value: PASS
+
+New connection each lookup (n=100): p50=147.2 ms, p95=216.2 ms, max=389.6 ms; HTTP 200=100/100; p95 under 500 ms=yes
+One keep-alive client (n=100): p50=74.8 ms, p95=107.3 ms, max=148.7 ms; HTTP 200=100/100; p95 under 500 ms=yes
+Keep-alive physical connections: 1 (expected 1)
+
+Overall: PASS
