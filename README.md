@@ -117,39 +117,67 @@ The server runs under a signed licence. An Ed25519 public key is built into the 
 - Data is never deleted on expiry. Uploading a valid licence restores full service instantly.
 - The web app polls `/license` every 10 seconds. When the licence expires, it shows "Licence expired. Contact your provider." When a valid licence is uploaded, the app recovers by itself.
 
-**Live demo steps** (run from the repository folder; set `URL` to `http://127.0.0.1:8000` locally, `http://localhost:8080` with Docker, or the live address):
+**Licence demo, no private key needed.** Run it from the repository folder. Set `URL` to `http://127.0.0.1:8000` locally, `http://localhost:8080` with Docker, or the live address. `licenses/expired.json` is a correctly signed licence whose date has passed; `licenses/long.json` runs to 31 Jan 2027.
 
 ```bash
 URL=http://127.0.0.1:8000
 
-# 1. Check health and licence
-curl $URL/health
-curl $URL/license
+# 1. The licence is valid. Add one synthetic report so step 3 can show the data survives.
+curl $URL/license                                  # "status":"valid"
+curl -X POST $URL/reports -H 'content-type: application/json' -d '{"report_id":"demo-licence-1","occurred_at":"2026-10-31T12:00:00+05:30","reporter_id":"r_demo_licence","channel":"Phone call","scam_type":"otp-call","identifier_type":"phone","identifier_value":"+91 90000 00042","pincode":"560102","note":"demo report to show the data survives the licence check"}'
+curl "$URL/lookup?type=phone&value=9000000042"     # "report_count":1
 
-# 2. Install a 5-minute licence (operator only: needs the private key, which is not in this repository)
-python tools/make_license.py --licensee "Demo Bank" --minutes 5 > lic5.json
-curl -X POST $URL/license -H 'content-type: application/json' --data @lic5.json
-#    Without the key, install the signed licence that has already expired:
-curl -X POST $URL/license -H 'content-type: application/json' --data @licenses/expired.json
+# 2. Install the expired licence. Every API route answers 403 {"error":"LICENSE_EXPIRED"},
+#    and the app (open $URL in a browser) shows "Licence expired. Contact your provider." at its next check (every 10 s).
+curl -X POST $URL/license -H 'content-type: application/json' --data @licenses/expired.json   # "status":"expired"
+for r in "lookup?type=phone&value=9000000042" "map?pincode=560102" "alerts?pincode=560102"; do
+  curl -s -o /dev/null -w "GET /$r -> %{http_code}\n" "$URL/$r"; done
+for r in reports challenges demo/run; do
+  curl -s -o /dev/null -w "POST /$r -> %{http_code}\n" -X POST "$URL/$r" -H 'content-type: application/json' -d '{}'; done
+curl $URL/health                                   # still 200: /health and /license stay open
 
-# 3. Wait for expiry → lookups return 403
-curl "$URL/lookup?type=phone&value=1930"
+# 3. Install the long licence. The API is back at once, with no restart and the same data;
+#    the app clears the expired screen at its next check, within 15 s.
+curl -X POST $URL/license -H 'content-type: application/json' --data @licenses/long.json      # "status":"valid"
+curl "$URL/lookup?type=phone&value=9000000042"     # 200, "report_count":1 as in step 1
 
-# 4. Restore with the long licence → service recovers, no restart
-curl -X POST $URL/license -H 'content-type: application/json' --data @licenses/long.json
-curl "$URL/lookup?type=phone&value=1930"
+# 4. Change one digit (expiry 2027 -> 2028) and upload the copy: the signature check fails.
+sed 's/2027-01-31/2028-01-31/' licenses/long.json > tampered.json
+curl -X POST $URL/license -H 'content-type: application/json' --data @tampered.json          # 400 {"error":"INVALID_LICENSE"}
+curl $URL/license                                  # unchanged: still the long licence, "status":"valid"
 ```
 
-The same steps in Windows PowerShell (step 3 shows the 403 as an error):
+`POST /admin/reset` is behind the licence too. It is left out above because with a valid licence it deletes every report.
+
+The same steps in Windows PowerShell. An error status shows up in the `catch`, which prints the code:
 
 ```powershell
 $URL = "http://127.0.0.1:8000"
-Invoke-RestMethod "$URL/health"
+# 1
 Invoke-RestMethod "$URL/license"
+Invoke-RestMethod -Method Post -Uri "$URL/reports" -ContentType "application/json" -Body '{"report_id":"demo-licence-1","occurred_at":"2026-10-31T12:00:00+05:30","reporter_id":"r_demo_licence","channel":"Phone call","scam_type":"otp-call","identifier_type":"phone","identifier_value":"+91 90000 00042","pincode":"560102","note":"demo report to show the data survives the licence check"}'
+Invoke-RestMethod "$URL/lookup?type=phone&value=9000000042"
+# 2
 Invoke-RestMethod -Method Post -Uri "$URL/license" -ContentType "application/json" -InFile licenses\expired.json
-Invoke-RestMethod "$URL/lookup?type=phone&value=1930"
+foreach ($r in "lookup?type=phone&value=9000000042", "map?pincode=560102", "alerts?pincode=560102") {
+  try { Invoke-RestMethod "$URL/$r" | Out-Null; "GET /$r -> 200" } catch { "GET /$r -> $([int]$_.Exception.Response.StatusCode)" } }
+foreach ($r in "reports", "challenges", "demo/run") {
+  try { Invoke-RestMethod -Method Post -Uri "$URL/$r" -ContentType "application/json" -Body '{}' | Out-Null; "POST /$r -> 200" } catch { "POST /$r -> $([int]$_.Exception.Response.StatusCode)" } }
+Invoke-RestMethod "$URL/health"
+# 3
 Invoke-RestMethod -Method Post -Uri "$URL/license" -ContentType "application/json" -InFile licenses\long.json
-Invoke-RestMethod "$URL/lookup?type=phone&value=1930"
+Invoke-RestMethod "$URL/lookup?type=phone&value=9000000042"
+# 4
+(Get-Content licenses\long.json -Raw).Replace("2027-01-31", "2028-01-31") | Set-Content -Encoding ascii tampered.json
+try { Invoke-RestMethod -Method Post -Uri "$URL/license" -ContentType "application/json" -InFile tampered.json } catch { [int]$_.Exception.Response.StatusCode }
+Invoke-RestMethod "$URL/license"
+```
+
+**Operator only** (needs the private key, which is never in this repository): mint a short licence for a live countdown.
+
+```bash
+python tools/make_license.py --licensee "Demo Bank" --minutes 5 > lic5.json
+curl -X POST $URL/license -H 'content-type: application/json' --data @lic5.json
 ```
 
 ---
