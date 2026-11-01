@@ -251,7 +251,7 @@ def test_judge_console_links_to_the_arena_and_the_page_uses_the_shared_theme():
     page = ARENA.read_text(encoding="utf-8")
     assert '<link rel="stylesheet" href="/static/theme.css">' in page
     import re
-    srcs = re.findall(r'<script src="([^"]+)"', page)              # no outside scripts: only our own reader
-    assert srcs == ["/static/ai/reader.js"], srcs
+    srcs = re.findall(r'<script src="([^"]+)"', page)              # no outside scripts: only our own reader and widget
+    assert srcs == ["/static/ai/reader.js", "/static/ai/attack.js"], srcs
     for word in ("scammer", "fraud"):
         assert word not in page.lower() and word not in (ROOT / "app" / "arena.py").read_text(encoding="utf-8").lower()
