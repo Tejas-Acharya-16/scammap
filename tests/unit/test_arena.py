@@ -250,6 +250,8 @@ def test_judge_console_links_to_the_arena_and_the_page_uses_the_shared_theme():
     assert 'href="/arena"' in judge and "Play the attacker" in judge
     page = ARENA.read_text(encoding="utf-8")
     assert '<link rel="stylesheet" href="/static/theme.css">' in page
-    assert "<script src=" not in page                           # no new outside scripts
+    import re
+    srcs = re.findall(r'<script src="([^"]+)"', page)              # no outside scripts: only our own reader
+    assert srcs == ["/static/ai/reader.js"], srcs
     for word in ("scammer", "fraud"):
         assert word not in page.lower() and word not in (ROOT / "app" / "arena.py").read_text(encoding="utf-8").lower()

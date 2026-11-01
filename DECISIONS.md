@@ -79,3 +79,14 @@ Decisions that took more than 10 minutes. Newest last.
 - Would change our mind: judges finding the scripts unrealistic, or the demo call failing on the venue's devices.
 - Cost if wrong: an hour of build time before the freeze. The core product is untouched.
 - Status: done on branch `ai-shield`.
+
+## 11. Attack our AI: harden the message reader against hidden-word tricks
+- Question: 08:15 on 1 Nov. Every team has an AI scam detector. Can ours be fooled the way spam filters are, and can we show that it cannot be fooled as easily?
+- Finding: yes. The plain reader dropped Russian look-alike letters, deleted digits inside words, ignored single letters and was drowned by friendly padding. On held-out folds, padding cut detection from 97.2% to 0.4%.
+- Options: retrain on attacked copies (slow, and only covers the tricks we generate); an LLM reader (forbidden at runtime, and open to "this message is safe" notes); undo the tricks before reading, read long text in windows, and flag the tricks.
+- Chosen: the third, the same in the browser and in Python. Every undo must land on a word the model knows, so normal text is untouched; the model file is unchanged.
+- Result, in our tests: look-alike letters 65.5% to 97.4%, invisible characters 61.1% to 97.4%, digits for letters 80.6% to 97.0%, padding 0.4% to 60.7%, all at once 0.0% to 58.3%; no new false alarms.
+- Would change our mind: real scam texts using tricks we did not model (emoji spelling, images of text).
+- Cost if wrong: one hour; the reader stays advisory and the verdicts never read it.
+- Status: done on branch `ai-lab`; scorecard in `app/static/ai/robustness.json`, demo under "Attack our AI" on `/arena`.
+

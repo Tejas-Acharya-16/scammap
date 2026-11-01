@@ -230,7 +230,8 @@ aiH:"AI reading of this message",aiNote:"AI suggestion, can be wrong",aiLooks:"L
 aiOk:"No common scam pattern found ({p}% sure). That does not mean it is safe.",aiWords:"Words that drove it:",aiFlags:"Red flags:",
 aiLocal:"Read on this phone. The AI sends nothing.",aiPre:"Kind of scam set from this reading. Change it if it is wrong.",
 flag_urgency:"Pushes you to act fast",flag_payment:"Asks for money",flag_police:"Mentions police, court or arrest",flag_otp:"Asks for an OTP, PIN or code",
-flag_link:"Has a link",flag_prize:"Promises a prize",flag_job_deposit:"Job that asks for a deposit"},
+flag_link:"Has a link",flag_prize:"Promises a prize",flag_job_deposit:"Job that asks for a deposit",
+flag_lookalike:"Look-alike letters (hides words)",flag_hidden:"Hidden characters",flag_spaced:"Spaced-out letters",flag_leet:"Digits in place of letters",flag_talks_to_ai:"Talks to an AI filter",flag_padding:"Scam hidden in a long text"},
 hi:{title:"स्कैम मैप",tCheck:"जाँचें",tReport:"रिपोर्ट करें",tArea:"मेरा इलाका",qLabel:"नंबर, UPI ID, लिंक या SMS भेजने वाला पेस्ट करें",checkBtn:"जाँचें",found:"मिला:",
 how:"उन्होंने कैसे संपर्क किया?",what:"नंबर, UPI ID, लिंक या भेजने वाला",kind:"स्कैम का प्रकार",when:"कब",areaL:"इलाका",note:"टिप्पणी (वैकल्पिक)",postBtn:"भेजें",familyBtn:"पैसे देने से पहले परिवार से पूछें",
 anonInfo:"गुमनाम: न नाम, न फ़ोन, न लोकेशन।",resetId:"मेरी गुमनाम ID बदलें",alertsH:"अलर्ट",mapH:"इस इलाके के पास, पिछले 7 दिन",
@@ -252,7 +253,8 @@ aiH:"इस मैसेज पर AI की राय",aiNote:"AI का सु
 aiOk:"कोई आम स्कैम पैटर्न नहीं मिला ({p}% भरोसा)। इसका मतलब यह नहीं कि यह सुरक्षित है।",aiWords:"इन शब्दों से अंदाज़ा:",aiFlags:"ख़तरे के संकेत:",
 aiLocal:"यह इसी फ़ोन पर पढ़ा गया। AI कुछ नहीं भेजता।",aiPre:"स्कैम का प्रकार इसी राय से चुना गया है। गलत हो तो बदल दें।",
 flag_urgency:"जल्दी करने का दबाव",flag_payment:"पैसे माँगता है",flag_police:"पुलिस, कोर्ट या गिरफ्तारी का ज़िक्र",flag_otp:"OTP, PIN या कोड माँगता है",
-flag_link:"इसमें लिंक है",flag_prize:"इनाम का लालच",flag_job_deposit:"नौकरी के लिए पैसे जमा करवाता है"}};
+flag_link:"इसमें लिंक है",flag_prize:"इनाम का लालच",flag_job_deposit:"नौकरी के लिए पैसे जमा करवाता है",
+flag_lookalike:"मिलते-जुलते अक्षर (शब्द छिपाने के लिए)",flag_hidden:"छिपे हुए अक्षर",flag_spaced:"अक्षरों के बीच जगह",flag_leet:"अक्षरों की जगह अंक",flag_talks_to_ai:"AI फ़िल्टर से बात करता है",flag_padding:"लंबे टेक्स्ट में छिपा स्कैम"}};
 const CH=[["Phone call","📞","फ़ोन कॉल"],["SMS or WhatsApp","💬","SMS या WhatsApp"],["QR code","🔳","QR कोड"],["Fake website","🌐","नकली वेबसाइट"],["UPI request","₹","UPI अनुरोध"],["Something else","❔","कुछ और"]];
 const TYPES=[["digital-arrest","Digital arrest (fake police)","डिजिटल अरेस्ट (नकली पुलिस)","No officer arrests anyone over a video call. Hang up and call 1930.","कोई भी अफ़सर वीडियो कॉल पर किसी को गिरफ़्तार नहीं करता। कॉल काटें और 1930 पर कॉल करें।"],
 ["fake-kyc-link","Fake KYC link","नकली KYC लिंक","Banks never ask for KYC through SMS links. Open your bank's own app.","बैंक कभी SMS लिंक से KYC नहीं माँगते। अपने बैंक का ही ऐप खोलें।"],
