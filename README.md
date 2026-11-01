@@ -1,31 +1,63 @@
 # Community Scam Map for India
 
-Report and verify scams in seconds, anonymously.
+**Report and check a scam in seconds, anonymously.** We count *people*, not reports: a crowd of fake friends counts as one voice. Four AI parts watch and explain; **none of them can change a verdict**. No LLM anywhere, and nothing personal is stored.
 
-- **Live app:** <https://scammap-yp1k.onrender.com> (opens on Report; <https://scammap-yp1k.onrender.com/#check> opens Check)
-- **AI Call Shield:** <https://scammap-yp1k.onrender.com/shield> (press "Play a demo call")
-- **Live scam map:** <https://scammap-yp1k.onrender.com/live>
-- **Judge console:** <https://scammap-yp1k.onrender.com/judge>
-- **Scam Arena:** <https://scammap-yp1k.onrender.com/arena>
+| Open | What to do there |
+|---|---|
+| <https://scammap-yp1k.onrender.com> | **Report** in under a minute: paste a whole SMS and the number is picked out; icons, English or हिन्दी, no login. |
+| <https://scammap-yp1k.onrender.com/#check> | **Check** a number, UPI ID, link or sender: verdict, AI watchdog line, "Ask family before you pay", **signed receipt**. |
+| <https://scammap-yp1k.onrender.com/judge> | **Judge console**: one button runs every scoring check on a sandbox copy (32 of 32 in our runs); licence panel; signature check. |
+| <https://scammap-yp1k.onrender.com/live> | **Live scam map**: 7-day areas, top scams, alerts. Fake campaigns never move it. |
+| <https://scammap-yp1k.onrender.com/shield> | **AI Call Shield** (press "Play a demo call") and **Attack our AI** (tap a trick, watch a plain model fail next to ours). |
+| <https://scammap-yp1k.onrender.com/arena> | **Scam Arena**: play the attacker against our rules, or let our AI attacker try 150 plans. Sandbox only. |
+| `/receipt` | **Signed Scam Receipt**: opened from a Check result; GENUINE or TAMPERED, checked on your own phone. |
 
-One website, one look, five pages:
+## Architecture in one picture
 
-- **AI Call Shield (`/shield`)**: scam calls change numbers, not scripts. Type what a caller says, line by line, and the AI on the phone names the scam script, the step the caller is on, and **what they will ask for next, before they ask**. Nothing typed leaves the phone, and no LLM is used. See [AI Call Shield](#ai-call-shield-it-knows-the-callers-script).
-- **The app (`/`)**: Check, Report and My area, on a phone or a laptop. English and हिन्दी, icons for every choice, no login, no name, no phone number asked. On a laptop a side panel explains the trust rules and links to the judge console.
-  - **Paste anything.** Paste a whole SMS or WhatsApp message and the app picks out the number, UPI ID, link or sender itself, on the phone.
-  - **On-device AI reading.** An AI on the phone reads the pasted message and suggests the kind of scam, labelled "AI suggestion, can be wrong". The message never leaves the phone. See [AI in ScamMap](#ai-in-scammap).
-  - **Ask family before you pay.** A Check result that is Known scam or Suspicious offers this button. It opens WhatsApp with a ready message the person can send to family; nothing is sent unless they send it.
-- **The live scam map (`/live`)**: reports from the last 7 days by area on a street map, top scam types, live alerts and the most reported numbers (only ones 3+ independent people confirmed), refreshed every 10 seconds. Area centre points only; fake campaigns and repeat reports never appear.
-- **The judge console (`/judge`)**:
-  - One button runs every scoring check, plus the AI watchdog checks, on a fresh sandbox copy of the engine (never the live data).
-  - Read-only checks of the live API.
-  - The licence panel: upload `licenses/expired.json` to lock and `licenses/long.json` to unlock, with no restart.
-  - A "Verify an answer" panel that checks a signed lookup in the browser.
-  - A QR code that opens the app on your phone.
-- **The Scam Arena (`/arena`)**: play the attacker. Plan fake reports with sliders and watch the rules and the AI watchdog answer, or let our automated attacker try 150 plans. Sandbox only, never the live data. See [Scam Arena](#scam-arena-play-the-attacker). Then **Attack our AI**: hide a scam message's words with the tricks scam texts use and watch a plain model fail next to our hardened one. See [Attack our AI](#attack-our-ai-tricks-that-hide-words-undone-and-turned-into-red-flags).
-- **AI watchdog**: every answer with 3+ reports carries an advisory AI opinion on whether the reports look coordinated, with its reasons. The rules decide; the AI never changes a verdict. See [The AI watchdog](#the-ai-watchdog-a-second-opinion-that-never-decides).
-- **Signed answers**: every lookup carries an Ed25519 signature, so a bank can later prove which server said what, and when. See [Signed answers](#signed-answers).
-- Security notes: [SECURITY.md](SECURITY.md). Libraries, services and AI tools: [DISCLOSURE.md](DISCLOSURE.md).
+```mermaid
+flowchart LR
+    P["📱 People<br/>report · check<br/>no login · हिन्दी · icons"]
+    F["👥 Fake crowd<br/>40 friends · 1 Wi-Fi · 1 person ×6"]
+    G{{"HTTPS + licence gate<br/>Ed25519 · 403 when expired"}}
+    P --> G
+    F -. same door .-> G
+    subgraph S["ScamMap server · FastAPI · Postgres event log · engine in memory"]
+        N["Normalise<br/>3 ways to type = 1 number"] --> A["Anonymise<br/>HMAC hashes only"]
+        A --> T["Trust engine<br/>people, not reports<br/>fake crowd = 1 voice"]
+        T --> L[("Event log")]
+        T --> V["Verdict + mask<br/>KNOWN_SCAM · SUSPICIOUS<br/>NO_REPORTS · VERIFIED"]
+        V --> SG["Signed answer<br/>Ed25519"]
+        T --> M["Map + alerts<br/>fakes never alert"]
+        L -. reads .-> W["AI watchdog<br/>coordination score + 3 reasons"]
+        T -. "fresh copy, same rules" .-> AR["Scam Arena (sandbox)<br/>judges attack · AI attacker"]
+    end
+    G --> N
+    SG --> R["📱 What the person sees<br/>verdict · Ask family · signed receipt"]
+    W -. "advice only, never changes the verdict" .-> R
+    M --> LM["🗺️ Live map"]
+    subgraph PH["On the phone · nothing sent"]
+        RD["AI message reader<br/>hidden-word tricks undone"]
+        CS["AI Call Shield<br/>script → next step"]
+    end
+    R --- PH
+```
+
+## For judges: where to check each scoring row
+
+| Row | What we built | Check it |
+|---|---|---|
+| 1. Fake reports | Trust rules count independent people: same reporter, same Wi-Fi within 24 h, pasted text, or a burst of new accounts = **one voice**. Verified businesses can't be marked. | `/judge` row 1 (12 checks); [How the trust rules work](#how-the-trust-rules-work); [attack table](#attack-table-in-our-tests-config-d7a23b4c-engine-v13) |
+| 2. Lookup | `+91 90000 12345`, `09000012345` and `9000012345` are one number; answers from memory. | `/judge` row 2; `GET /lookup` |
+| 3. Map and alerts | SPIKE (5+ and 2× usual), NEW_TYPE, 7-day window; only clean voices count. | `/live`; `/judge` row 3 |
+| 4. Privacy | Reporter and network kept only as keyed hashes; numbers masked until 3 people agree; area centre points, never GPS; careful wording ("reported by 7 people", never a label on a person). | `/judge` row 4; [Privacy](#privacy) |
+| 5. Licence | Ed25519-signed licence; expired = `403 LICENSE_EXPIRED` on every route but `/health` and `/license`; renewed with **no restart**; data kept. | `/judge` licence panel; [How the licence works](#how-the-licence-works) |
+| 6. Easy to report | Paste anything, icons for every choice, Hindi, no login, a few taps. | `/` on a phone |
+| 7. Demo and code | This README, 440 + 60 browser tests, CI on every push, honest [known limits](#known-limits). | [Proof](#proof) |
+| Bonus | Verified businesses, disputes, fake reports never raise alerts. | `/judge` bonus (3 checks) |
+
+**What is different here:** the AI can explain but never decide · we attacked our own AI and hardened it ([Attack our AI](#attack-our-ai-tricks-that-hide-words-undone-and-turned-into-red-flags)) · every answer is signed and can be carried as a [receipt](#signed-scam-receipt) · limits are written down, not hidden.
+
+Security notes: [SECURITY.md](SECURITY.md). Libraries, services and AI tools: [DISCLOSURE.md](DISCLOSURE.md). Numbers in this README come from our own tests with synthetic data, not from the judges' tool and not real-world accuracy.
 
 ---
 
@@ -511,10 +543,10 @@ All results below are from our own synthetic data and generators. They are not f
 # Engine tests (283 passed, 2 known limits)
 python -m pytest tests/engine -q
 
-# Everything except the browser tests (436 passed, 2 known limits)
+# Everything except the browser tests (440 passed, 2 known limits)
 python -m pytest tests -q --ignore=tests/e2e
 
-# Browser tests, phone and laptop size (58 passed; first run: python -m playwright install chromium)
+# Browser tests, phone and laptop size (60 passed; first run: python -m playwright install chromium)
 python -m pytest tests/e2e -q
 
 # Paste-anything: the extractor and a phone flow (Node 22, uses the Python Playwright above; 3 passed)
