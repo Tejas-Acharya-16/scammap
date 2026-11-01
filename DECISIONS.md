@@ -49,3 +49,14 @@ Decisions that took more than 10 minutes. Newest last.
 - Would change our mind: the organisers' sample data showing real reports always carry distinct notes.
 - Cost if wrong: a slow multi-day ring with empty notes could mark a number.
 - Status: done; 60-seed table in `tests/engine/ATTACK_TABLE.txt`, config `d7a23b4c`.
+
+## 8. AI in the product: an advisory watchdog, not a judge
+- Question: 03:30 on 1 Nov, after mentor feedback that every team has the same rule-based answer. Where can AI add something the rules cannot, without breaking our own rule that verdicts come from deterministic code?
+- Options: an LLM that reads reports (forbidden in the request path, not explainable); a model that sets verdicts (a false positive on the judges' real data costs rows 1 and 2); a small model that only flags and explains.
+- Chosen: the third. A logistic regression over 15 aggregate features, weights kept at zero or above, trained on a randomised attack simulator. It adds `ai_watchdog` to lookups and never reads or changes the verdict.
+- Why: it looks at all signals at once and catches what fixed rules miss (backdating: 41% of the planted campaigns that beat the rules in our simulator are flagged), it explains itself in plain words, and it cannot hurt a verdict.
+- First version rejected: trained on the hand-written scenarios, it scored 100% but had learned "many reports and a short time means fake", which would have flagged every large real wave. We rebuilt the training data so both sides have the same sizes and dropped report count as a feature.
+- Would change our mind: the organisers' data showing real waves with one shared filing time and varied claimed times (then the backdating signal needs a new guard), or a rule from the organisers against models at runtime.
+- Cost if wrong: an advisory "high" on a real scam would confuse a reader. The verdict stays right either way.
+- Status: done on branch `ai-watchdog`; 21 tests; judge console AI section, 6 checks.
+

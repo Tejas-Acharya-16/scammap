@@ -29,8 +29,15 @@ textarea{min-height:48px;resize:vertical}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{border:1px solid var(--line-2);background:var(--surface);border-radius:var(--pill);padding:6px 13px;font-size:14px;color:var(--ink-2)}
 .chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.found{margin:10px 0 0}.found-label{display:block;font-size:13px;font-weight:650;color:var(--muted);margin-bottom:5px}
+.found-chips{display:flex;flex-wrap:wrap;gap:6px}.found-chip{max-width:100%;overflow-wrap:anywhere;text-align:left;border:1px solid var(--line-2);background:var(--surface);border-radius:var(--pill);padding:7px 11px;font-size:13px;color:var(--ink-2)}
+.found-chip.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-text)}
 .app .mono{font-size:17px;margin:10px 0 6px;letter-spacing:-.01em;overflow-wrap:anywhere}
 .advice{background:var(--amber-soft);border:1px solid var(--amber-line);border-radius:12px;padding:10px 12px;margin-top:12px;font-size:14px;color:#5B3B00}
+.wd{border:1px solid var(--line);border-left:4px solid var(--line-2);border-radius:12px;padding:10px 12px;margin-top:12px;font-size:14px;color:var(--ink-2);background:var(--bg-2)}
+.wd b{color:var(--ink)}.wd ul{margin:6px 0 0;padding-left:18px}.wd li{margin:2px 0}
+.wd .tag{display:inline-block;font:700 11px/18px var(--mono);padding:0 6px;border-radius:6px;background:var(--ink);color:#fff;margin-right:6px;vertical-align:1px}
+.wd.high{border-left-color:var(--amber)}
 .app .card>b:first-child{display:block;font-size:15px;margin-bottom:6px}
 .cluster{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding:10px 0}
 .cluster:last-child{border-bottom:0}
@@ -89,7 +96,8 @@ textarea{min-height:48px;resize:vertical}
 <section id="check" class="hidden">
   <div class="card">
     <label for="q" data-t="qLabel"></label>
-    <input id="q" autocomplete="off" inputmode="text">
+    <textarea id="q" autocomplete="off" inputmode="text" rows="2"></textarea>
+    <div id="qfound" class="found hidden"><span class="found-label" data-t="found"></span><div class="found-chips" id="qfoundchips"></div></div>
     <div class="chips" id="qtype" style="margin-top:8px"></div>
     <button class="btn" id="go" data-t="checkBtn"></button>
   </div>
@@ -99,7 +107,8 @@ textarea{min-height:48px;resize:vertical}
 <section id="report">
   <div class="card" id="rform">
     <label data-t="how"></label><div class="tiles" id="channels"></div>
-    <label for="rv" data-t="what"></label><input id="rv" autocomplete="off">
+    <label for="rv" data-t="what"></label><textarea id="rv" autocomplete="off" rows="2"></textarea>
+    <div id="rfound" class="found hidden"><span class="found-label" data-t="found"></span><div class="found-chips" id="rfoundchips"></div></div>
     <div class="chips" id="rtype" style="margin-top:8px"></div>
     <div id="air" class="ai hidden" aria-live="polite"></div>
     <label data-t="kind"></label><div class="tiles kinds" id="kinds"></div>
@@ -120,7 +129,86 @@ textarea{min-height:48px;resize:vertical}
 </div>
 <div id="expired" class="hidden"><div class="code">● 403 · LICENSE_EXPIRED</div><div class="lk" aria-hidden="true">🔒</div><b>Licence expired. Contact your provider.</b><div class="hi" lang="hi">लाइसेंस समाप्त हो गया है। अपने प्रदाता से संपर्क करें।</div></div>
 <script>
-const S={en:{title:"Community Scam Map",tCheck:"Check",tReport:"Report",tArea:"My area",qLabel:"Paste a number, UPI ID, link or SMS sender",checkBtn:"Check",
+/* Local-only paste extraction. Kept in sync with app/static/extract.js because
+   this app serves only theme.css from /static and the API must stay unchanged. */
+window.ScamMapExtract = (() => {
+  "use strict";
+  const PHONE_RE = /(?<![\w@])((?:\+?91|0091|0)[\s().-]*)?(?:[6-9]\d{4}[\s().-]*\d{5}|[6-9]\d{9})(?![\w])/g;
+  const PAY_RE = /(?<![\w])upi:\/\/pay\?[^\s<>"']+/gi;
+  const UPI_RE = /(?<![\w@])([a-z0-9][a-z0-9._-]{1,254}@[a-z][a-z0-9]{1,30})(?![\w.-])/gi;
+  const SENDER_RE = /\b([A-Z]{2}-[A-Z0-9]{4,10}(?:-[A-Z])?)\b/gi;
+  const URL_RE = /(?<![\w@])(?:https?|hxxps?):\/\/[^\s<>"']+|(?<![\w@])www\.[^\s<>"']+|(?<![\w@])(?:[a-z0-9-]+(?:\[\.\]|\.)+)[a-z]{2,}(?:\/[^\s<>"']*)?(?![\w@.-])/gi;
+  function trimUrl(value) { return value.replace(/[.,!?;:]+$/g, "").replace(/[)\]}]+$/g, ""); }
+  function normalizeUrl(value) {
+    let url = trimUrl(value.trim());
+    url = url.replace(/^hxxps?:\/\//i, scheme => scheme.toLowerCase().startsWith("hxxps") ? "https://" : "http://");
+    url = url.replace(/\[\.\]/g, ".");
+    if (/^www\./i.test(url) || !/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) url = "https://" + url;
+    return url;
+  }
+  function normalizePhone(value) {
+    let digits = value.replace(/\D/g, "");
+    if (digits.startsWith("0091") && digits.length === 14) digits = digits.slice(4);
+    else if (digits.startsWith("91") && digits.length === 12) digits = digits.slice(2);
+    else if (digits.startsWith("0") && digits.length === 11) digits = digits.slice(1);
+    if (digits.length !== 10 || !/^[6-9]\d{9}$/.test(digits)) return null;
+    return "+91 " + digits.slice(0, 5) + " " + digits.slice(5);
+  }
+  function paymentLinkKey(value) {
+    if (!/^upi:\/\/pay\?/i.test(value)) return value.toLowerCase();
+    const query = value.slice(value.indexOf("?") + 1).split("&");
+    const pa = query.map(part => part.split("=")).find(([key]) => key.toLowerCase() === "pa");
+    if (!pa) return value.toLowerCase();
+    try { return decodeURIComponent(pa.slice(1).join("=").replace(/\+/g, "%20")).toLowerCase(); }
+    catch (_) { return pa.slice(1).join("=").toLowerCase(); }
+  }
+  function extractCandidates(text) {
+    const source = String(text || ""), found = [];
+    const addMatches = (regex, type, normalize) => {
+      regex.lastIndex = 0;
+      let match;
+      while ((match = regex.exec(source)) !== null) {
+        const value = normalize(match[0]);
+        if (value) found.push({ type, value, start: match.index, end: match.index + match[0].length });
+        if (!match[0].length) regex.lastIndex++;
+      }
+    };
+    addMatches(PAY_RE, "upi", trimUrl);
+    addMatches(UPI_RE, "upi", value => value);
+    addMatches(PHONE_RE, "phone", normalizePhone);
+    addMatches(SENDER_RE, "sender_id", value => value.toUpperCase());
+    addMatches(URL_RE, "url", value => /^upi:\/\//i.test(value) ? null : normalizeUrl(value));
+    found.sort((a, b) => a.start - b.start || a.end - b.end);
+    const seen = new Set();
+    return found.filter(({ type, value }) => {
+      const key = type + ":" + (type === "upi" ? paymentLinkKey(value) : value.toLowerCase());
+      if (seen.has(key)) return false;
+      seen.add(key); return true;
+    }).map(({ type, value }) => ({ type, value }));
+  }
+  const KIND_RULES = [
+    ["fake-kyc-link", /\bkyc\b/i], ["digital-arrest", /\b(?:parcel|customs|police|arrest)\b/i],
+    ["lottery-prize", /\b(?:lottery|prize)\b/i], ["job-offer", /\b(?:job|task)\b/i],
+    ["electricity-disconnection", /\b(?:electricity|bill)\b/i], ["otp-call", /\botp\b/i],
+    ["upi-refund-qr", /\b(?:refund|qr)\b/i], ["loan-app-harassment", /\bloan\b/i],
+    ["investment-group", /\b(?:investment|stock|trading)\b/i], ["fake-customer-care", /\bcustomer[\s-]+care\b/i]
+  ];
+  function guessReport(text) {
+    const message = String(text || ""), candidates = extractCandidates(message), candidate = candidates[0] || null;
+    const match = KIND_RULES.find(([, pattern]) => pattern.test(message));
+    let channel = "Something else";
+    if (candidates.some(item => item.type === "sender_id") || /\b(?:sms|whatsapp)\b/i.test(message)) channel = "SMS or WhatsApp";
+    else if (candidate && candidate.type === "upi") channel = "UPI request";
+    else if (/\bqr\b/i.test(message)) channel = "QR code";
+    else if (candidate && candidate.type === "url") channel = "Fake website";
+    else if (candidate && candidate.type === "phone") channel = "Phone call";
+    return { candidates, candidate, channel, scamType: match ? match[0] : "other" };
+  }
+  return { extractCandidates, guessReport };
+})();
+</script>
+<script>
+const S={en:{title:"Community Scam Map",tCheck:"Check",tReport:"Report",tArea:"My area",qLabel:"Paste a number, UPI ID, link or SMS sender",checkBtn:"Check",found:"Found:",
 how:"How did they reach you?",what:"The number, UPI ID, link or sender",kind:"Kind of scam",when:"When",areaL:"Area",note:"Note (optional, your own words help)",postBtn:"Post report",
 anonInfo:"Anonymous: no name, no phone, no location.",resetId:"Reset my anonymous ID",alertsH:"Alerts",mapH:"Reports near this area, last 7 days",
 thanks:"Thanks. Your report is anonymous.",bad:"That does not look like a valid number, UPI ID, link or sender.",net:"Network problem. Try again.",badArea:"Pick your area.",
@@ -128,6 +216,7 @@ none:"No alerts here.",noClusters:"No reports near this area in the last 7 days.
 disputeSent:"Dispute received. It is under review.",bizName:"Business name (optional)",bizMail:"Contact email (optional)",send:"Send dispute",
 KNOWN_SCAM:"Known scam",SUSPICIOUS:"Suspicious",NO_REPORTS:"No reports",VERIFIED_BUSINESS:"Verified business",
 sKNOWN:"Reported by {n} people.",sSUSP:"Reported by {n} {p}. Not enough to confirm.",sBurst:"Reported {n} times, mostly by new accounts from one area within a few hours. We count a burst like this as one voice until other people confirm it. Stay careful.",sNONE:"No reports yet. That does not mean it is safe.",sVER:"Verified business: {l}",
+wdHigh:"AI watchdog: these reports look coordinated ({p}%). Flagged for a person to review. The answer above comes from the rules, not the AI.",wdMed:"AI watchdog: some signs of coordination ({p}%). The answer above comes from the rules, not the AI.",wdLow:"AI watchdog: these look like independent reports ({p}% coordinated).",
 person:"person",people:"people",review:"A business disputed this. Under review.",last:"Last reported",
 spike:"Scam reports here jumped: {c} in 24 hours (usual {b} a day).",newtype:"New kind of scam here: {t}.",
 now:"Just now",today:"Today",yday:"Yesterday",earlier:"Earlier",phone:"Phone",upi:"UPI ID",url:"Link",sender_id:"SMS sender",
@@ -141,7 +230,7 @@ aiOk:"No common scam pattern found ({p}% sure). That does not mean it is safe.",
 aiLocal:"Read on this phone. The AI sends nothing.",aiPre:"Kind of scam set from this reading. Change it if it is wrong.",
 flag_urgency:"Pushes you to act fast",flag_payment:"Asks for money",flag_police:"Mentions police, court or arrest",flag_otp:"Asks for an OTP, PIN or code",
 flag_link:"Has a link",flag_prize:"Promises a prize",flag_job_deposit:"Job that asks for a deposit"},
-hi:{title:"स्कैम मैप",tCheck:"जाँचें",tReport:"रिपोर्ट करें",tArea:"मेरा इलाका",qLabel:"नंबर, UPI ID, लिंक या SMS भेजने वाला पेस्ट करें",checkBtn:"जाँचें",
+hi:{title:"स्कैम मैप",tCheck:"जाँचें",tReport:"रिपोर्ट करें",tArea:"मेरा इलाका",qLabel:"नंबर, UPI ID, लिंक या SMS भेजने वाला पेस्ट करें",checkBtn:"जाँचें",found:"मिला:",
 how:"उन्होंने कैसे संपर्क किया?",what:"नंबर, UPI ID, लिंक या भेजने वाला",kind:"स्कैम का प्रकार",when:"कब",areaL:"इलाका",note:"टिप्पणी (वैकल्पिक)",postBtn:"भेजें",
 anonInfo:"गुमनाम: न नाम, न फ़ोन, न लोकेशन।",resetId:"मेरी गुमनाम ID बदलें",alertsH:"अलर्ट",mapH:"इस इलाके के पास, पिछले 7 दिन",
 thanks:"धन्यवाद। आपकी रिपोर्ट गुमनाम है।",bad:"यह सही नंबर, UPI ID, लिंक या भेजने वाला नहीं लगता।",net:"नेटवर्क समस्या। फिर कोशिश करें।",badArea:"अपना इलाका चुनें।",
@@ -149,6 +238,7 @@ none:"यहाँ कोई अलर्ट नहीं।",noClusters:"पि
 disputeSent:"आपत्ति मिली। समीक्षा जारी है।",bizName:"व्यवसाय का नाम (वैकल्पिक)",bizMail:"संपर्क ईमेल (वैकल्पिक)",send:"आपत्ति भेजें",
 KNOWN_SCAM:"ज्ञात स्कैम",SUSPICIOUS:"संदिग्ध",NO_REPORTS:"कोई रिपोर्ट नहीं",VERIFIED_BUSINESS:"सत्यापित व्यवसाय",
 sKNOWN:"{n} लोगों ने रिपोर्ट किया।",sSUSP:"{n} {p} ने रिपोर्ट किया। पुष्टि के लिए काफ़ी नहीं।",sBurst:"{n} बार रिपोर्ट किया गया, ज़्यादातर एक ही इलाके के नए अकाउंट से, कुछ ही घंटों में। जब तक दूसरे लोग पुष्टि न करें, हम ऐसी रिपोर्टों को एक आवाज़ मानते हैं। सावधान रहें।",sNONE:"अभी कोई रिपोर्ट नहीं। इसका मतलब यह नहीं कि यह सुरक्षित है।",sVER:"सत्यापित व्यवसाय: {l}",
+wdHigh:"AI निगरानी: ये रिपोर्ट सुनियोजित लगती हैं ({p}%)। एक व्यक्ति इनकी जाँच करेगा। ऊपर का जवाब नियमों से है, AI से नहीं।",wdMed:"AI निगरानी: सुनियोजित होने के कुछ संकेत ({p}%)। ऊपर का जवाब नियमों से है, AI से नहीं।",wdLow:"AI निगरानी: ये अलग-अलग लोगों की स्वतंत्र रिपोर्ट लगती हैं ({p}% सुनियोजित)।",
 person:"व्यक्ति",people:"लोगों",review:"एक व्यवसाय ने आपत्ति की है। समीक्षा जारी है।",last:"आख़िरी रिपोर्ट",
 spike:"यहाँ स्कैम रिपोर्ट अचानक बढ़ीं: 24 घंटे में {c} (आम तौर पर {b} रोज़)।",newtype:"यहाँ नया स्कैम: {t}।",
 now:"अभी",today:"आज",yday:"कल",earlier:"पहले",phone:"फ़ोन",upi:"UPI ID",url:"लिंक",sender_id:"SMS भेजने वाला",
@@ -199,6 +289,8 @@ function detect(v){v=(v||"").trim();if(!v)return null;if(/^upi:\/\//i.test(v)||/
  if(/^([a-z]{2}-?)?[a-z0-9]{6}(-[a-z])?$/i.test(v.replace(/\s/g,""))&&/[a-z]{3}/i.test(v))return"sender_id";return"phone"}
 function typeChips(el,cur,set){el.innerHTML="";["phone","upi","url","sender_id"].forEach(k=>{const b=document.createElement("button");b.className="chip"+(k===cur?" on":"");
  b.textContent=t(k);b.onclick=()=>{set(k);typeChips(el,k,set)};el.appendChild(b)})}
+function foundChips(container,items,selected,onSelect){container.innerHTML="";items.forEach(item=>{const b=document.createElement("button");b.type="button";b.className="found-chip"+(item.value===selected?" on":"");b.textContent=item.value;b.dataset.type=item.type;b.onclick=()=>onSelect(item);container.appendChild(b)})}
+function showFound(id,on){$(id).classList.toggle("hidden",!on)}
 async function api(path,opt){const r=await fetch(path,opt);let body={};try{body=await r.json()}catch(e){}
  if(r.status===403&&body.error==="LICENSE_EXPIRED"){showExpired(true)}return{status:r.status,body}}
 function fmtDay(s){if(!s)return"";try{return new Date(s).toLocaleDateString(lang==="hi"?"hi-IN":"en-IN",{day:"numeric",month:"short",timeZone:"Asia/Kolkata"})}catch(e){return s.slice(0,10)}}
@@ -213,12 +305,22 @@ function render(){document.documentElement.lang=lang;document.title=t("title");d
   b.onclick=()=>{whenSel=k;render()};$("when").appendChild(b)});
  for(const id of["parea","aarea"]){const cur=$(id).value||store.get("area")||"560102";$(id).innerHTML=AREAS.map(([p,a,c])=>`<option value="${p}">${a}, ${c}</option>`).join("");$(id).value=cur}
  typeChips($("qtype"),qType,k=>qType=k);typeChips($("rtype"),rType,k=>rType=k);paintPill()}
+const WD_HI={"linked_share+":"वही लोग या नेटवर्क बार-बार रिपोर्ट कर रहे हैं","new_share+":"रिपोर्ट करने वालों का कोई पिछला रिकॉर्ड नहीं","shared_net_share+":"कई रिपोर्ट गिने-चुने नेटवर्क से",
+"burst1_share+":"ज़्यादातर रिपोर्ट एक घंटे के अंदर","burst6_share+":"ज़्यादातर रिपोर्ट छह घंटे के अंदर","area_top_share+":"ज़्यादातर रिपोर्ट एक ही इलाके से","area_spread+":"हर रिपोर्ट अलग इलाके से",
+"empty_share+":"रिपोर्ट में अपने शब्द नहीं","dup_text_share+":"कई लोगों ने एक जैसा टेक्स्ट भेजा","short_span+":"सारी रिपोर्ट बहुत कम समय में","backdated+":"रिपोर्ट एक साथ दर्ज, पर कॉल अलग-अलग दिनों की बताई गईं",
+"dup_x_burst+":"एक जैसा टेक्स्ट, कुछ ही घंटों में","empty_x_burst+":"खाली रिपोर्ट, कुछ ही घंटों में","spread_x_burst+":"हर रिपोर्ट अलग इलाके से, एक ही घंटे में","new_x_burst+":"बिलकुल नए लोग, एक ही घंटे में",
+"linked_share-":"हर रिपोर्ट के पीछे अलग व्यक्ति","new_share-":"रिपोर्ट करने वालों का पिछला रिकॉर्ड है","shared_net_share-":"हर रिपोर्ट अलग नेटवर्क से","burst1_share-":"रिपोर्ट पूरे दिन में फैली हुई",
+"burst6_share-":"रिपोर्ट कई दिनों में फैली हुई","area_top_share-":"रिपोर्ट कई इलाकों से","area_spread-":"रिपोर्ट कुछ इलाकों में केंद्रित","empty_share-":"लोगों ने अपने शब्दों में लिखा",
+"dup_text_share-":"हर रिपोर्ट में अलग शब्द","short_span-":"रिपोर्ट लंबे समय में फैली हुई","backdated-":"रिपोर्ट कॉल के आसपास ही दर्ज हुई"};
+function wdHTML(a){if(!a||a.coordinated==null)return"";const p=Math.round(a.coordinated*100);const k=a.level==="high"?"wdHigh":a.level==="medium"?"wdMed":"wdLow";
+ const why=(a.signals||[]).map((s,i)=>"<li>"+esc(lang==="hi"&&WD_HI[(a.signal_codes||[])[i]]||s)+"</li>").join("");
+ return `<div class="wd${a.level==="high"?" high":""}" data-wd="${esc(a.level)}"><span class="tag">AI</span><b>${t(k,{p})}</b>${why?"<ul>"+why+"</ul>":""}</div>`}
 function cardHTML(b){const n=b.distinct_reporters;
  const sent=b.trust&&b.trust.hold?t("sBurst",{n:b.report_count}):b.verdict==="KNOWN_SCAM"?t("sKNOWN",{n}):b.verdict==="SUSPICIOUS"?t("sSUSP",{n,p:n===1?t("person"):t("people")}):b.verdict==="NO_REPORTS"?t("sNONE"):t("sVER",{l:b.label||""});
  const adv=b.scam_type?(TYPES.find(a=>a[0]===b.scam_type)||TYPES[12])[lang==="hi"?4:3]:"";
  return `<span class="verdict v-${esc(b.verdict)}">${esc(t(b.verdict))}</span><div class="mono">${esc(b.display_value)}</div><div><b>${sent}</b></div>
  ${b.challenged?`<div class="muted">${t("review")}</div>`:""}${b.last_seen?`<div class="muted">${t("last")}: ${esc(fmtDay(b.last_seen))}${b.scam_type?" · "+esc(tname(b.scam_type)):""}</div>`:""}
- ${adv&&b.verdict!=="VERIFIED_BUSINESS"?`<div class="advice">${esc(adv)}</div>`:""}`}
+ ${adv&&b.verdict!=="VERIFIED_BUSINESS"?`<div class="advice">${esc(adv)}</div>`:""}${wdHTML(b.ai_watchdog)}`}
 async function check(value,type){const v=(value||"").trim();if(!v)return;const ty=type||detect(v);lastCheck=null;aiShow("q");
  $("result").innerHTML='<div class="card muted">…</div>';
  let r;try{r=await api(`/lookup?type=${encodeURIComponent(ty)}&value=${encodeURIComponent(v)}`)}catch(e){$("result").innerHTML=`<div class="card err" data-t="net">${t("net")}</div>`;return}
@@ -265,8 +367,23 @@ function repaint(){if(lastCheck&&$("cbody"))$("cbody").innerHTML=cardHTML(lastCh
  if(!$("area").classList.contains("hidden"))loadArea()}
 function setLang(l){lang=l;store.set("lang",l);render();repaint()}
 $("l-en").onclick=()=>setLang("en");$("l-hi").onclick=()=>setLang("hi");
-$("go").onclick=()=>check($("q").value,qType);$("q").onkeydown=e=>{if(e.key==="Enter")check($("q").value,qType)};$("q").oninput=()=>{qType=detect($("q").value);typeChips($("qtype"),qType,k=>qType=k)};
-$("rv").oninput=()=>{rType=detect($("rv").value);typeChips($("rtype"),rType,k=>rType=k)};$("post").onclick=post;$("aarea").onchange=loadArea;
+function chooseCheck(item){qType=item.type;$("q").value=item.value;showFound("qfound",false);check(item.value,item.type)}
+function pasteForCheck(e){e.preventDefault();const text=e.clipboardData?.getData("text/plain")||"";$("q").value=text;
+ if(asTyped(text)){qType=detect(text);typeChips($("qtype"),qType,k=>qType=k);showFound("qfound",false);check(text,qType);return}
+ const candidates=ScamMapExtract.extractCandidates(text);qType=null;typeChips($("qtype"),qType,k=>qType=k);
+ if(candidates.length===1){chooseCheck(candidates[0]);return}if(candidates.length>1){showFound("qfound",true);foundChips($("qfoundchips"),candidates,null,chooseCheck);return}showFound("qfound",false)}
+function chooseReport(item,candidates){$("rv").value=item.value;rType=item.type;typeChips($("rtype"),rType,k=>rType=k);foundChips($("rfoundchips"),candidates,item.value,x=>chooseReport(x,candidates))}
+function pasteForReport(e){e.preventDefault();const text=e.clipboardData?.getData("text/plain")||"";const guess=ScamMapExtract.guessReport(text);channel=guess.channel;kind=guess.scamType;
+ if(guess.candidate){$("rv").value=guess.candidate.value;rType=guess.candidate.type}else{$("rv").value="";rType=null}
+ render();if(guess.candidates.length>1){showFound("rfound",true);foundChips($("rfoundchips"),guess.candidates,guess.candidate?.value,item=>chooseReport(item,guess.candidates))}else showFound("rfound",false)}
+// One typed or pasted value (no spaces) is checked exactly as written, unless it is defanged (hxxp, [.]):
+// the server's own normaliser handles every other format, and cutting a value at a character the extractor
+// stops on (such as "<") would check a different value. A message with spaces goes through the extractor.
+const asTyped=v=>{v=String(v||"").trim();return !!v&&!/\s/.test(v)&&!/\[\.\]|^hxxps?:/i.test(v)};
+$("go").onclick=()=>{const v=$("q").value;if(asTyped(v)){showFound("qfound",false);check(v,qType);return}
+ const candidates=ScamMapExtract.extractCandidates(v);if(candidates.length===1)chooseCheck(candidates[0]);else if(candidates.length>1){showFound("qfound",true);foundChips($("qfoundchips"),candidates,null,chooseCheck)}else check(v,qType)};
+$("q").onpaste=pasteForCheck; $("q").onkeydown=e=>{if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();$("go").click()}};$("q").oninput=()=>{qType=detect($("q").value);typeChips($("qtype"),qType,k=>qType=k);showFound("qfound",false)};
+$("rv").onpaste=pasteForReport;$("rv").oninput=()=>{rType=detect($("rv").value);typeChips($("rtype"),rType,k=>rType=k);showFound("rfound",false)};$("post").onclick=post;$("aarea").onchange=loadArea;
 $("resetid").onclick=e=>{e.preventDefault();store.set("rid","");rid()};
 function route(){tab(location.hash==="#check"?"check":location.hash==="#area"?"area":"report")}
 window.addEventListener("hashchange",route);

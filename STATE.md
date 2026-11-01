@@ -19,6 +19,14 @@ Live: https://scammap-yp1k.onrender.com (app at `/`, judge console at `/judge`).
 | Licence, 4 steps on live | Lock at expiry (403), restore with no restart, tampered file 400, survives a redeploy | Claude Code, 31 Oct 18:39 to 18:46 |
 | Docker on localhost | `docker compose up`: /health 200 on port 8080 | Antigravity, 1 Nov 00:25 |
 
+## Added since 01:00 (branch `ai-watchdog`, stacked on `live-map`)
+
+- AI watchdog: advisory `ai_watchdog` on every lookup with 3+ reports; judge console AI section (6 checks, 32/32 over 40 seeds); Check card shows it in English and Hindi. Held-out in our simulator: AUC 0.915; flags 94 of 230 planted campaigns that beat the rules; wrongly flags 22 of 749 confirmed real waves. Tests: 336 passed, 2 xfailed; e2e 29 passed (Claude, 1 Nov 04:31).
+
+## Integrated at 04:57 (branch `integrate-all`)
+
+- One branch with osm-tiles, #15 AI watchdog, #12 signed answers, #16 AI message reader and #13 paste-anything, conflicts resolved. Fixes: a single typed or pasted value is checked exactly as written (the stored-XSS test failed with #13 alone); the watchdog's page names renamed (`wd`) so they cannot clash with the reader's (`ai`); an AI reading at 0.7 or more sets the kind of scam over the keyword rule (Codex's test now expects courier-customs for the parcel-link message). Tests: engine 283 passed, 2 xfailed; all but browser 373 passed, 2 xfailed; browser 38 passed; Node 3 passed. Trust config unchanged (`d7a23b4c`).
+
 ## Open issues
 
 1. Stored XSS in how a reported link is shown: fix written (security hardening patches), not merged yet.

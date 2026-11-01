@@ -59,7 +59,11 @@ def test_demo_run_with_seed_passes_every_check(client):
     assert js["passed"] == js["total"], [c for s in js["sections"] for c in s["checks"] if not c["ok"]]
 
 
-def test_demo_run_does_not_touch_live_data(client):
+def test_demo_run_does_not_touch_live_data(client, monkeypatch):
+    # One fixed instant for both lookups: each answer carries a signed issued_at (whole seconds), and a slow
+    # demo run can cross a second boundary. The comparison stays exact; only the clock is held still.
+    frozen = datetime.now(IST)
+    monkeypatch.setattr(main, "clock", type("FrozenClock", (), {"now": staticmethod(lambda: frozen)})())
     report = {
         "report_id": "rep_unit_demo", "occurred_at": (datetime.now(IST) - timedelta(hours=1)).isoformat(),
         "reporter_id": "r_unit_demo", "ip_prefix": "10.20.30", "channel": "Phone call",
