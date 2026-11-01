@@ -17,6 +17,7 @@
 textarea{min-height:48px;resize:vertical}
 .app .btn{display:flex;width:100%;margin-top:14px;min-height:50px;font-size:17px}
 .family-share{white-space:normal;overflow-wrap:anywhere;justify-content:center;text-align:center}
+.rcpt{display:inline-block;margin-top:10px;font-size:14px;font-weight:600}
 .postbar{position:sticky;bottom:0;z-index:2;margin:0 -16px;padding:10px 16px 12px;background:linear-gradient(rgba(255,255,255,0),#fff 12px)}
 .postbar .btn{margin-top:0}
 #rmsg{margin:0 0 8px}#rmsg:empty{display:none}
@@ -210,7 +211,7 @@ window.ScamMapExtract = (() => {
 </script>
 <script>
 const S={en:{title:"Community Scam Map",tCheck:"Check",tReport:"Report",tArea:"My area",qLabel:"Paste a number, UPI ID, link or SMS sender",checkBtn:"Check",found:"Found:",
-how:"How did they reach you?",what:"The number, UPI ID, link or sender",kind:"Kind of scam",when:"When",areaL:"Area",note:"Note (optional, your own words help)",postBtn:"Post report",familyBtn:"Ask family before you pay",
+how:"How did they reach you?",what:"The number, UPI ID, link or sender",kind:"Kind of scam",when:"When",areaL:"Area",note:"Note (optional, your own words help)",postBtn:"Post report",familyBtn:"Ask family before you pay",receipt:"Signed receipt",
 anonInfo:"Anonymous: no name, no phone, no location.",resetId:"Reset my anonymous ID",alertsH:"Alerts",mapH:"Reports near this area, last 7 days",
 thanks:"Thanks. Your report is anonymous.",bad:"That does not look like a valid number, UPI ID, link or sender.",net:"Network problem. Try again.",badArea:"Pick your area.",
 none:"No alerts here.",noClusters:"No reports near this area in the last 7 days.",reportToo:"Report this too",another:"Report another",dispute:"Is this your number? Dispute",
@@ -233,7 +234,7 @@ flag_urgency:"Pushes you to act fast",flag_payment:"Asks for money",flag_police:
 flag_link:"Has a link",flag_prize:"Promises a prize",flag_job_deposit:"Job that asks for a deposit",
 flag_lookalike:"Look-alike letters (hides words)",flag_hidden:"Hidden characters",flag_spaced:"Spaced-out letters",flag_leet:"Digits in place of letters",flag_talks_to_ai:"Talks to an AI filter",flag_padding:"Scam hidden in a long text"},
 hi:{title:"स्कैम मैप",tCheck:"जाँचें",tReport:"रिपोर्ट करें",tArea:"मेरा इलाका",qLabel:"नंबर, UPI ID, लिंक या SMS भेजने वाला पेस्ट करें",checkBtn:"जाँचें",found:"मिला:",
-how:"उन्होंने कैसे संपर्क किया?",what:"नंबर, UPI ID, लिंक या भेजने वाला",kind:"स्कैम का प्रकार",when:"कब",areaL:"इलाका",note:"टिप्पणी (वैकल्पिक)",postBtn:"भेजें",familyBtn:"पैसे देने से पहले परिवार से पूछें",
+how:"उन्होंने कैसे संपर्क किया?",what:"नंबर, UPI ID, लिंक या भेजने वाला",kind:"स्कैम का प्रकार",when:"कब",areaL:"इलाका",note:"टिप्पणी (वैकल्पिक)",postBtn:"भेजें",familyBtn:"पैसे देने से पहले परिवार से पूछें",receipt:"हस्ताक्षरित रसीद",
 anonInfo:"गुमनाम: न नाम, न फ़ोन, न लोकेशन।",resetId:"मेरी गुमनाम ID बदलें",alertsH:"अलर्ट",mapH:"इस इलाके के पास, पिछले 7 दिन",
 thanks:"धन्यवाद। आपकी रिपोर्ट गुमनाम है।",bad:"यह सही नंबर, UPI ID, लिंक या भेजने वाला नहीं लगता।",net:"नेटवर्क समस्या। फिर कोशिश करें।",badArea:"अपना इलाका चुनें।",
 none:"यहाँ कोई अलर्ट नहीं।",noClusters:"पिछले 7 दिनों में यहाँ कोई रिपोर्ट नहीं।",reportToo:"इसे भी रिपोर्ट करें",another:"एक और रिपोर्ट करें",dispute:"क्या यह आपका नंबर है? आपत्ति करें",
@@ -318,6 +319,12 @@ const WD_HI={"linked_share+":"वही लोग या नेटवर्क �
 function wdHTML(a){if(!a||a.coordinated==null)return"";const p=Math.round(a.coordinated*100);const k=a.level==="high"?"wdHigh":a.level==="medium"?"wdMed":"wdLow";
  const why=(a.signals||[]).map((s,i)=>"<li>"+esc(lang==="hi"&&WD_HI[(a.signal_codes||[])[i]]||s)+"</li>").join("");
  return `<div class="wd${a.level==="high"?" high":""}" data-wd="${esc(a.level)}"><span class="tag">AI</span><b>${t(k,{p})}</b>${why?"<ul>"+why+"</ul>":""}</div>`}
+// Signed Scam Receipt: the signed answer goes in the link's #fragment, which the browser never sends to a server.
+// The value rides along only when the number is already shown in full (KNOWN_SCAM or VERIFIED_BUSINESS).
+function receiptLink(b){const o={a:b.attestation};if(b.verdict==="KNOWN_SCAM"||b.verdict==="VERIFIED_BUSINESS")o.v=b.display_value;
+ let bin="";new TextEncoder().encode(JSON.stringify(o)).forEach(x=>bin+=String.fromCharCode(x));
+ const r=btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+ return `<a class="rcpt" href="/receipt#r=${r}" target="_blank" rel="noopener noreferrer" data-t="receipt">${esc(t("receipt"))}</a>`}
 function cardHTML(b,checkCard=false){const n=b.distinct_reporters;
  const sent=b.trust&&b.trust.hold?t("sBurst",{n:b.report_count}):b.verdict==="KNOWN_SCAM"?t("sKNOWN",{n}):b.verdict==="SUSPICIOUS"?t("sSUSP",{n,p:n===1?t("person"):t("people")}):b.verdict==="NO_REPORTS"?t("sNONE"):t("sVER",{l:b.label||""});
  const adv=b.scam_type?(TYPES.find(a=>a[0]===b.scam_type)||TYPES[12])[lang==="hi"?4:3]:"";
@@ -328,7 +335,7 @@ function cardHTML(b,checkCard=false){const n=b.distinct_reporters;
  const familyAction=family?`<a class="btn family-share" href="https://wa.me/?text=${esc(encodeURIComponent(familyMessage))}" target="_blank" rel="noopener noreferrer">${esc(t("familyBtn"))}</a>`:"";
  return `<span class="verdict v-${esc(b.verdict)}">${esc(t(b.verdict))}</span><div class="mono">${esc(b.display_value)}</div><div><b>${sent}</b></div>
  ${b.challenged?`<div class="muted">${t("review")}</div>`:""}${b.last_seen?`<div class="muted">${t("last")}: ${esc(fmtDay(b.last_seen))}${b.scam_type?" · "+esc(tname(b.scam_type)):""}</div>`:""}
- ${adv&&b.verdict!=="VERIFIED_BUSINESS"?`<div class="advice">${esc(adv)}</div>`:""}${wdHTML(b.ai_watchdog)}${familyAction}`}
+ ${adv&&b.verdict!=="VERIFIED_BUSINESS"?`<div class="advice">${esc(adv)}</div>`:""}${wdHTML(b.ai_watchdog)}${familyAction}${checkCard&&b.attestation?receiptLink(b):""}`}
 async function check(value,type){const v=(value||"").trim();if(!v)return;const ty=type||detect(v);lastCheck=null;aiShow("q");
  $("result").innerHTML='<div class="card muted">…</div>';
  let r;try{r=await api(`/lookup?type=${encodeURIComponent(ty)}&value=${encodeURIComponent(v)}`)}catch(e){$("result").innerHTML=`<div class="card err" data-t="net">${t("net")}</div>`;return}

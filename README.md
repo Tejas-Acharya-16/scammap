@@ -453,6 +453,18 @@ Limits:
 - A local run without `TRUST_SALT` uses a public default salt, so anyone can forge its answers. Pin only the live server's key.
 - Signing adds about 0.1 ms per lookup (p95, in process, in our bench): `python -m pytest tests/unit/test_attestation.py -k p95 -s`.
 
+## Signed Scam Receipt
+
+**Proves what ScamMap said and when. It does not prove the number is a scam.**
+
+After a Check, the result card shows a **Signed receipt** link (हस्ताक्षरित रसीद). It opens `/receipt#r=…` in a new tab, a page a person can show their bank:
+
+- The receipt is the lookup's `attestation` (plus the value itself, but only when the app already shows it in full: KNOWN_SCAM or VERIFIED_BUSINESS), base64url-encoded in the URL **fragment**. Browsers never send the fragment to a server, so opening a receipt tells our server nothing about which number it is for.
+- The page rebuilds the signed bytes exactly as the judge console does (every field but `sig`, sorted keys, no spaces) and checks them with tweetnacl 1.0.3 (pinned with its integrity hash) against this server's key. If the value is included, it checks `sha256(value) == value_sha256`. It then shows **GENUINE** or **TAMPERED**, the verdict, "reported by N independent people", the report count, when it was issued (IST), whether the number matches, and the key id.
+- **Try to fake it** changes N people to N×10 on the page and checks again: TAMPERED. Changing any character of the link does the same.
+- A QR code of the full page link is drawn in the browser (qrcodejs), captioned "Show this to your bank".
+- `/receipt` is served like `/judge`, also while the licence is expired. `GET /attestation/key` stays behind the licence gate, so the page is served with the same public key built in, and old receipts still check.
+
 ---
 
 ## Privacy

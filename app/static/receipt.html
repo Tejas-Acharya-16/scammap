@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Signed Scam Receipt · Community Scam Map</title>
+<link rel="stylesheet" href="/static/theme.css">
+<style>
+/* The receipt's own layout. The shared look (colours, header, cards, buttons) is in /static/theme.css. */
+.rc{max-width:520px;margin:0 auto;padding:16px}
+.rc h1{font-size:22px;margin:0 0 4px}
+.big{margin:14px 0 6px;padding:18px 12px;border-radius:14px;text-align:center;font:800 34px/1.1 system-ui,sans-serif;letter-spacing:.06em;color:#fff;background:#6B7C93}
+.big.ok{background:#1E8E5A}.big.bad{background:#C0392B}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;margin:12px 0;font-size:15px}
+.facts dt{color:#5B6B80;font-weight:600}.facts dd{margin:0;overflow-wrap:anywhere}
+.vpill{display:inline-block;padding:3px 10px;border-radius:14px;font-weight:700;font-size:14px;color:#fff;background:#6B7C93}
+.p-KNOWN_SCAM{background:#C0392B}.p-SUSPICIOUS{background:#B7791F}.p-VERIFIED_BUSINESS{background:#1E8E5A}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.qrw{margin:16px 0 8px;text-align:center}#qr{display:inline-block;padding:8px;background:#fff;border-radius:10px}
+.honest{margin-top:14px;font-size:14px;font-weight:600}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="strip"><div class="in"><b data-t="stripA">Anonymous by design</b> <span data-t="stripB">· no login, no name, no phone number asked</span></div></div>
+<header class="site"><div class="in">
+  <a class="brand" href="/" aria-label="Community Scam Map"><span class="mk" aria-hidden="true"></span><span class="wm"><b>Community <span>Scam Map</span></b><small data-t="tag">Report · check · anonymous</small></span></a>
+  <nav class="sitenav" aria-label="Main"><a href="/#check" data-t="tCheck">Check</a><a href="/#report" data-t="tReport">Report</a><a href="/#area" data-t="tArea">My area</a><a class="nl" href="/live"><span class="lg" data-t="tLive">Live map</span><span class="sm" data-t="tLiveS">Map</span></a><a class="nai" href="/shield"><span class="lg" data-t="tAI">AI Shield</span><span class="sm" data-t="tAIS">AI</span></a><a class="nj" href="/judge"><span class="lg" data-t="tJudge">Judge console</span><span class="sm" data-t="tJudgeS">Judge</span></a></nav>
+  <div class="tools"><span class="lang"><button id="l-en" class="on">EN</button><button id="l-hi">हिन्दी</button></span></div>
+</div></header>
+<main class="rc">
+<section class="card">
+  <h1 data-t="title">Signed Scam Receipt</h1>
+  <p class="muted" data-t="sub">A signed copy of what ScamMap answered about one number, UPI ID, link or sender.</p>
+  <div id="big" class="big idle" role="status" aria-live="polite">…</div>
+  <p id="why" class="muted"></p>
+  <dl id="facts" class="facts hidden">
+    <dt data-t="saidL">ScamMap said</dt><dd><span id="pill" class="vpill"></span></dd>
+    <dt data-t="peopleL">Reported by</dt><dd id="people"></dd>
+    <dt data-t="countL">Reports</dt><dd id="count"></dd>
+    <dt data-t="issuedL">Issued</dt><dd id="issued"></dd>
+    <dt data-t="numL">Number</dt><dd id="num"></dd>
+    <dt data-t="keyL">Key</dt><dd id="kid" class="mono"></dd>
+  </dl>
+  <button id="fake" class="btn alt hidden" type="button"></button>
+  <div class="qrw"><div id="qr" aria-label="QR code of this page"></div><p class="muted" data-t="qr">Show this to your bank</p></div>
+  <p class="honest" data-t="honest">Proves what ScamMap said and when. It does not prove the number is a scam.</p>
+</section>
+</main>
+<script>
+// Signed Scam Receipt. The receipt travels only in the URL fragment (#r=...), which browsers never send to a
+// server. This page rebuilds the signed bytes exactly like the judge console (every field but "sig", sorted keys,
+// no spaces) and checks them with tweetnacl against this server's public key.
+// KEY is filled in by GET /receipt with the same key as GET /attestation/key, so a receipt still checks while the
+// licence is expired (that API route is behind the licence gate; this page is not).
+const KEY = __RECEIPT_KEY__;
+const S = {
+  en: {tag: "Report · check · anonymous", tCheck: "Check", tReport: "Report", tArea: "My area", tJudge: "Judge console", tJudgeS: "Judge", tAI: "AI Shield", tAIS: "AI", tLive: "Live map", tLiveS: "Map",
+       stripA: "Anonymous by design", stripB: "· no login, no name, no phone number asked",
+       title: "Signed Scam Receipt", sub: "A signed copy of what ScamMap answered about one number, UPI ID, link or sender.",
+       genuine: "GENUINE", tampered: "TAMPERED", unchecked: "NOT CHECKED", noReceiptBig: "NO RECEIPT",
+       okWhy: "The signature matches this server's key.", badSig: "The signature does not match these details. Someone changed them.",
+       badNum: "The number does not match the signed receipt.", damaged: "This receipt link is damaged or has been edited.",
+       otherKey: "Signed with another key, not this server's key.", noLib: "The checking library did not load, so this receipt was not checked.",
+       noKey: "This server's key is not available, so this receipt was not checked.",
+       none: "There is no receipt in this link. Open one from the Check screen: Signed receipt.",
+       saidL: "ScamMap said", peopleL: "Reported by", people: "{n} independent people", person: "1 independent person", countL: "Reports",
+       issuedL: "Issued", numL: "Number", match: "matches: {v}", nomatch: "does not match this receipt", numUnchecked: "not checked in this browser",
+       hidden: "hidden: shown in full only after 3 independent reports", keyL: "Key",
+       fake: "Try to fake it: change {n} people to {m}", faked: "Changed to {m} people on this page only. The signature no longer matches.",
+       qr: "Show this to your bank", honest: "Proves what ScamMap said and when. It does not prove the number is a scam.",
+       KNOWN_SCAM: "Known scam", SUSPICIOUS: "Suspicious", NO_REPORTS: "No reports", VERIFIED_BUSINESS: "Verified business"},
+  hi: {tag: "रिपोर्ट · जाँच · गुमनाम", tCheck: "जाँचें", tReport: "रिपोर्ट करें", tArea: "मेरा इलाका", tJudge: "जज कंसोल", tJudgeS: "जज", tAI: "एआई शील्ड", tAIS: "एआई", tLive: "लाइव नक्शा", tLiveS: "नक्शा",
+       stripA: "डिज़ाइन से गुमनाम", stripB: "· न लॉगिन, न नाम, न फ़ोन नंबर",
+       title: "हस्ताक्षरित स्कैम रसीद", sub: "ScamMap ने एक नंबर, UPI ID, लिंक या भेजने वाले के बारे में जो जवाब दिया, उसकी हस्ताक्षरित कॉपी।",
+       genuine: "असली", tampered: "छेड़छाड़ हुई", unchecked: "जाँच नहीं हुई", noReceiptBig: "कोई रसीद नहीं",
+       okWhy: "हस्ताक्षर इस सर्वर की कुंजी से मेल खाता है।", badSig: "हस्ताक्षर इन जानकारियों से मेल नहीं खाता। किसी ने इन्हें बदला है।",
+       badNum: "नंबर हस्ताक्षरित रसीद से मेल नहीं खाता।", damaged: "यह रसीद लिंक खराब है या इसमें बदलाव किया गया है।",
+       otherKey: "किसी दूसरी कुंजी से हस्ताक्षरित, इस सर्वर की कुंजी से नहीं।", noLib: "जाँचने वाली लाइब्रेरी लोड नहीं हुई, इसलिए रसीद की जाँच नहीं हुई।",
+       noKey: "इस सर्वर की कुंजी उपलब्ध नहीं है, इसलिए रसीद की जाँच नहीं हुई।",
+       none: "इस लिंक में कोई रसीद नहीं है। जाँचें स्क्रीन पर 'हस्ताक्षरित रसीद' से खोलें।",
+       saidL: "ScamMap ने कहा", peopleL: "रिपोर्ट करने वाले", people: "{n} अलग-अलग लोग", person: "1 व्यक्ति", countL: "रिपोर्टों की संख्या",
+       issuedL: "जारी हुई", numL: "नंबर", match: "मेल खाता है: {v}", nomatch: "इस रसीद से मेल नहीं खाता", numUnchecked: "इस ब्राउज़र में जाँच नहीं हुई",
+       hidden: "छिपा है: 3 अलग-अलग रिपोर्टों के बाद ही पूरा दिखता है", keyL: "कुंजी",
+       fake: "नकल करके देखें: {n} लोगों को {m} कर दें", faked: "सिर्फ़ इस पेज पर {m} लोग कर दिया। अब हस्ताक्षर मेल नहीं खाता।",
+       qr: "यह अपने बैंक को दिखाएँ", honest: "यह साबित करता है कि ScamMap ने क्या और कब कहा। यह साबित नहीं करता कि यह नंबर स्कैम है।",
+       KNOWN_SCAM: "ज्ञात स्कैम", SUSPICIOUS: "संदिग्ध", NO_REPORTS: "कोई रिपोर्ट नहीं", VERIFIED_BUSINESS: "सत्यापित व्यवसाय"},
+};
+const $ = id => document.getElementById(id);
+let lang = "en";
+try { lang = localStorage.getItem("lang") === "hi" ? "hi" : "en"; } catch (e) {}
+const t = (k, v = {}) => String(S[lang][k] ?? S.en[k] ?? k).replace(/\{(\w)\}/g, (_, x) => v[x] ?? "");
+const b64bytes = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const canonical = a => "{" + Object.keys(a).filter(k => k !== "sig").sort()
+  .map(k => JSON.stringify(k) + ":" + JSON.stringify(a[k])).join(",") + "}";
+async function sha256hex(bytes) {
+  if (!(window.crypto && crypto.subtle)) return null;              // only on https or localhost
+  const d = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(d)].map(x => x.toString(16).padStart(2, "0")).join("");
+}
+// null: no receipt in the link · false: damaged or edited · {a, v}: a receipt to check
+function readReceipt() {
+  const m = /^#r=(.*)$/.exec(location.hash);
+  if (!m || !m[1]) return null;
+  try {
+    let s = m[1].replace(/-/g, "+").replace(/_/g, "/");
+    while (s.length % 4) s += "=";
+    const o = JSON.parse(new TextDecoder("utf-8", {fatal: true}).decode(b64bytes(s)));
+    return o && o.a && typeof o.a === "object" && !Array.isArray(o.a) ? o : false;
+  } catch (e) { return false; }
+}
+let key = null;
+async function getKey() {
+  if (key) return key;
+  let k = null;
+  try { const r = await fetch("/attestation/key", {cache: "no-store"}); if (r.ok) k = await r.json(); } catch (e) {}
+  if (k && k.public_key) {
+    if (KEY && KEY.public_key && KEY.public_key !== k.public_key) return null;   // two different keys: do not guess
+    key = k;
+  } else if (KEY && KEY.public_key) {
+    key = KEY;                                                                     // licence expired or offline
+  }
+  return key;
+}
+// [true, ""] valid · [false, why] invalid · [null, why] could not check (same checks as the judge console)
+async function checkSig(a) {
+  if (typeof nacl === "undefined" || !nacl.sign) return [null, "noLib"];
+  const k = await getKey();
+  if (!k) return [null, "noKey"];
+  let pub, sig;
+  try { pub = b64bytes(k.public_key); sig = b64bytes(String(a.sig)); } catch (e) { return [false, "badSig"]; }
+  const kid = await sha256hex(pub);
+  if (kid !== null && kid.slice(0, 8) !== k.key_id) return [null, "noKey"];
+  if (a.key_id !== k.key_id) return [false, "otherKey"];
+  if (a.v !== 1) return [false, "badSig"];
+  const ok = pub.length === 32 && sig.length === 64 && nacl.sign.detached.verify(new TextEncoder().encode(canonical(a)), sig, pub);
+  return ok ? [true, ""] : [false, "badSig"];
+}
+let receipt = null, state = null, orig = null, faked = 0;
+async function verify() {
+  if (receipt === null) { state = {kind: "none"}; return paint(); }
+  if (receipt === false) { state = {kind: "bad", why: "damaged"}; return paint(); }
+  const a = receipt.a;
+  const [ok, why] = await checkSig(a);
+  let match = null;
+  if (receipt.v != null) {
+    const h = await sha256hex(new TextEncoder().encode(String(receipt.v)));
+    match = h === null ? null : h === a.value_sha256;
+  }
+  state = ok === false ? {kind: "bad", why} : match === false ? {kind: "bad", why: "badNum"}
+        : ok === true ? {kind: "ok", why: "okWhy"} : {kind: "idle", why};
+  if (faked && state.kind === "bad") state.why = "faked";
+  state.match = match;
+  paint();
+}
+function fmtIssued(s) {
+  try {
+    return new Date(s).toLocaleString(lang === "hi" ? "hi-IN" : "en-IN", {timeZone: "Asia/Kolkata", day: "numeric",
+      month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false}) + " IST";
+  } catch (e) { return String(s); }
+}
+function paint() {
+  document.documentElement.lang = lang;
+  document.title = t("title") + " · Community Scam Map";
+  document.querySelectorAll("[data-t]").forEach(e => { if (S.en[e.dataset.t] !== undefined) e.textContent = t(e.dataset.t); });
+  $("l-en").className = lang === "en" ? "on" : "";
+  $("l-hi").className = lang === "hi" ? "on" : "";
+  if (!state) return;
+  const big = $("big");
+  big.className = "big " + ({ok: "ok", bad: "bad"}[state.kind] || "idle");
+  big.textContent = state.kind === "ok" ? t("genuine") : state.kind === "bad" ? t("tampered")
+                  : state.kind === "none" ? t("noReceiptBig") : t("unchecked");
+  $("why").textContent = state.kind === "none" ? t("none") : state.why ? t(state.why, {m: faked}) : "";
+  const a = receipt && receipt.a;
+  $("facts").classList.toggle("hidden", !a);
+  const n = orig, m = n > 0 ? n * 10 : 10;
+  $("fake").classList.toggle("hidden", !a || !!faked || typeof n !== "number");
+  $("fake").textContent = t("fake", {n, m});
+  if (!a) return;
+  $("pill").className = "vpill p-" + String(a.verdict).replace(/[^A-Z_]/g, "");
+  $("pill").textContent = S.en[a.verdict] ? t(a.verdict) : String(a.verdict);
+  $("people").textContent = a.voices === 1 ? t("person") : t("people", {n: a.voices});
+  $("count").textContent = String(a.report_count);
+  $("issued").textContent = fmtIssued(a.issued_at);
+  $("num").textContent = receipt.v == null ? t("hidden") : state.match === true ? t("match", {v: receipt.v})
+                       : state.match === false ? t("nomatch") : t("numUnchecked");
+  $("kid").textContent = String(a.key_id);
+}
+function drawQr() {
+  const box = $("qr");
+  if (!box || typeof QRCode === "undefined") return;
+  box.innerHTML = "";
+  try { new QRCode(box, {text: location.href, width: 168, height: 168, correctLevel: QRCode.CorrectLevel.L}); }
+  catch (e) { box.style.display = "none"; }
+}
+function setLang(l) { lang = l; try { localStorage.setItem("lang", l); } catch (e) {} paint(); }
+$("l-en").onclick = () => setLang("en");
+$("l-hi").onclick = () => setLang("hi");
+$("fake").onclick = () => {
+  if (!receipt || !receipt.a || faked || typeof orig !== "number") return;
+  faked = orig > 0 ? orig * 10 : 10;
+  receipt.a.voices = faked;                                        // edit in place, then check again
+  verify();
+};
+function start() {
+  receipt = readReceipt();
+  orig = receipt && receipt.a && typeof receipt.a.voices === "number" ? receipt.a.voices : null;
+  faked = 0; state = null;
+  paint(); verify(); drawQr();
+}
+paint();
+window.addEventListener("load", start);                             // after tweetnacl has loaded (or failed)
+window.addEventListener("hashchange", start);
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tweetnacl/1.0.3/nacl-fast.min.js" integrity="sha512-aLSwsdjU35MF6PERT7Pic3+X6qL7O+Us8hYQl/gjrPoV4JXUNoCF2Ys3/vfJSiBW1QNxz2WTr4tEo5VcOdHt/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" onload="drawQr()" onerror="document.getElementById('qr').style.display='none'"></script>
+</body>
+</html>

@@ -20,7 +20,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from sqlalchemy import BigInteger, Boolean, Column, Integer, MetaData, Table, Text, create_engine, select, delete
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -178,9 +178,10 @@ JUDGE_HTML = Path(__file__).parent / "static" / "judge.html"
 LIVE_HTML = Path(__file__).parent / "static" / "live.html"
 ARENA_HTML = Path(__file__).parent / "static" / "arena.html"
 SHIELD_HTML = Path(__file__).parent / "static" / "shield.html"
+RECEIPT_HTML = Path(__file__).parent / "static" / "receipt.html"
 THEME_CSS = Path(__file__).parent / "static" / "theme.css"   # the shared look of / and /judge
 AI_DIR = Path(__file__).parent / "static" / "ai"           # on-device message reader (runs in the browser only)
-PAGES = frozenset({"/", "/judge", "/live", "/arena", "/shield"})  # served on GET only; exempt from the licence gate
+PAGES = frozenset({"/", "/judge", "/live", "/arena", "/shield", "/receipt"})  # served on GET only; exempt from the licence gate
 
 # Which deploy is answering (headers on /health)
 COMMIT = os.environ.get("RENDER_GIT_COMMIT", "dev")[:7]
@@ -509,6 +510,15 @@ def arena_page():
 def shield_page():
     # AI Call Shield: follows a scam call's script on the phone. Exempt from the licence gate like the other pages.
     return FileResponse(SHIELD_HTML, media_type="text/html")
+
+
+@app.get("/receipt")
+def receipt_page():
+    # Signed Scam Receipt: checks a signed lookup answer carried in the URL fragment (never sent here).
+    # Exempt from the licence gate like the other pages. The public key (the same as GET /attestation/key,
+    # which is gated) is put into the page, so a receipt still checks while the licence is expired.
+    html = RECEIPT_HTML.read_text(encoding="utf-8")
+    return HTMLResponse(html.replace("__RECEIPT_KEY__", json.dumps(SIGNER.key_info()), 1))
 
 
 @app.get(STATIC_PREFIX + "/theme.css")
