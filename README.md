@@ -7,7 +7,7 @@ Report and verify scams in seconds, anonymously.
 
 One website, two pages, one look:
 
-- **The app (`/`)**: Check, Report and My area, on a phone or a laptop. English and हिन्दी, icons for every choice, no login, no name, no phone number asked. On a laptop a side panel explains the trust rules and links to the judge console.
+- **The app (`/`)**: Check, Report and My area, on a phone or a laptop. English and हिन्दी, icons for every choice, no login, no name, no phone number asked. Eligible SUSPICIOUS or KNOWN_SCAM check results include an “Ask family before you pay” WhatsApp link, built from the value and verdict already shown on the card. On a laptop a side panel explains the trust rules and links to the judge console.
 - **The live scam map (`/live`)**: reports from the last 7 days by area on a street map, top scam types, live alerts and the most reported numbers (only ones 3+ independent people confirmed), refreshed every 10 seconds. Area centre points only; fake campaigns and repeat reports never appear.
 - **The judge console (`/judge`)**: one button runs every scoring check, plus the AI watchdog checks, on a fresh sandbox copy of the engine (never the live data); read-only checks of the live API; the licence panel (upload `licenses/expired.json` to lock, `licenses/long.json` to unlock, no restart); a QR code that opens the app on your phone.
 - **AI watchdog**: every answer with 3+ reports carries an advisory AI opinion on whether the reports look coordinated, with its reasons. The rules decide; the AI never changes a verdict. See [The AI watchdog](#the-ai-watchdog-a-second-opinion-that-never-decides).
