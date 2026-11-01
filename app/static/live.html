@@ -76,7 +76,7 @@ body{background:var(--bg);color:var(--ink);margin:0}
 <div class="strip"><div class="in"><b data-t="stripA">Anonymous by design</b> <span data-t="stripB">· no login, no name, no phone number asked</span></div></div>
 <header class="site"><div class="in">
   <a class="brand" href="/" aria-label="Community Scam Map"><span class="mk" aria-hidden="true"></span><span class="wm"><b>Community <span>Scam Map</span></b><small data-t="tag">Report · check · anonymous</small></span></a>
-  <nav class="sitenav" aria-label="Main"><a href="/#check" data-t="tCheck">Check</a><a href="/#report" data-t="tReport">Report</a><a href="/#area" data-t="tArea">My area</a><a class="nl on" href="/live" aria-current="page"><span class="lg" data-t="tLive">Live map</span><span class="sm" data-t="tLiveS">Map</span></a><a class="nj" href="/judge"><span class="lg" data-t="tJudge">Judge console</span><span class="sm" data-t="tJudgeS">Judge</span></a></nav>
+  <nav class="sitenav" aria-label="Main"><a href="/#check" data-t="tCheck">Check</a><a href="/#report" data-t="tReport">Report</a><a href="/#area" data-t="tArea">My area</a><a class="nl on" href="/live" aria-current="page"><span class="lg" data-t="tLive">Live map</span><span class="sm" data-t="tLiveS">Map</span></a><a class="nai" href="/shield"><span class="lg" data-t="tAI">AI Shield</span><span class="sm" data-t="tAIS">AI</span></a><a class="nj" href="/judge"><span class="lg" data-t="tJudge">Judge console</span><span class="sm" data-t="tJudgeS">Judge</span></a></nav>
   <div class="tools"><span id="licPill" class="pill" role="status"><i></i><span class="pl-w" data-t="licW">Licence</span><span id="licTxt">…</span></span><span class="lang"><button id="l-en" class="on">EN</button><button id="l-hi">हिन्दी</button></span></div>
 </div></header>
 <div class="wrap">
@@ -112,7 +112,7 @@ body{background:var(--bg);color:var(--ink);margin:0}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 const S = {
-  en: {tag:"Report · check · anonymous", tCheck:"Check", tReport:"Report", tArea:"My area", tLive:"Live map", tLiveS:"Map", tJudge:"Judge console", tJudgeS:"Judge",
+  en: {tag:"Report · check · anonymous", tCheck:"Check", tReport:"Report", tArea:"My area", tLive:"Live map", tLiveS:"Map", tJudge:"Judge console", tJudgeS:"Judge",tAI:"AI Shield",tAIS:"AI",
        stripA:"Anonymous by design", stripB:"· no login, no name, no phone number asked", licW:"Licence", licOk:"valid", licExp:"expired", licBad:"not valid",
        h1a:"Live scam map:", h1b:"what is being reported now",
        lead:"Reports from the last 7 days, grouped by area. Fake campaigns and repeat reports are left out, so every dot is independent people.",
@@ -125,7 +125,7 @@ const S = {
        noNums:"No number has 3 independent reports this week.", areasN:"{n} areas", areas1:"1 area", wk:"this week", day:"last 24 h",
        spike:"Sudden jump in {a}: {n} reports today, usually {b} a day", newType:"New kind of scam in {a}: {t}",
        reportedBy:"Reported by {n} people · {t} · last {d}", topIn:"Top here"},
-  hi: {tag:"रिपोर्ट · जाँच · गुमनाम", tCheck:"जाँचें", tReport:"रिपोर्ट करें", tArea:"मेरा इलाका", tLive:"लाइव नक्शा", tLiveS:"नक्शा", tJudge:"जज कंसोल", tJudgeS:"जज",
+  hi: {tag:"रिपोर्ट · जाँच · गुमनाम", tCheck:"जाँचें", tReport:"रिपोर्ट करें", tArea:"मेरा इलाका", tLive:"लाइव नक्शा", tLiveS:"नक्शा", tJudge:"जज कंसोल", tJudgeS:"जज",tAI:"एआई शील्ड",tAIS:"एआई",
        stripA:"डिज़ाइन से गुमनाम", stripB:"· न लॉगिन, न नाम, न फ़ोन नंबर", licW:"लाइसेंस", licOk:"मान्य", licExp:"समाप्त", licBad:"अमान्य",
        h1a:"लाइव स्कैम नक्शा:", h1b:"अभी किसकी रिपोर्ट हो रही है",
        lead:"पिछले 7 दिनों की रिपोर्ट, इलाके के हिसाब से। नकली अभियान और दोहराई गई रिपोर्ट हटा दी जाती हैं, इसलिए हर बिंदु अलग-अलग लोगों की रिपोर्ट है।",
