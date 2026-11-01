@@ -177,9 +177,10 @@ INDEX_HTML = Path(__file__).parent / "static" / "index.html"
 JUDGE_HTML = Path(__file__).parent / "static" / "judge.html"
 LIVE_HTML = Path(__file__).parent / "static" / "live.html"
 ARENA_HTML = Path(__file__).parent / "static" / "arena.html"
+SHIELD_HTML = Path(__file__).parent / "static" / "shield.html"
 THEME_CSS = Path(__file__).parent / "static" / "theme.css"   # the shared look of / and /judge
 AI_DIR = Path(__file__).parent / "static" / "ai"           # on-device message reader (runs in the browser only)
-PAGES = frozenset({"/", "/judge", "/live", "/arena"})  # served on GET only; exempt from the licence gate
+PAGES = frozenset({"/", "/judge", "/live", "/arena", "/shield"})  # served on GET only; exempt from the licence gate
 
 # Which deploy is answering (headers on /health)
 COMMIT = os.environ.get("RENDER_GIT_COMMIT", "dev")[:7]
@@ -504,6 +505,12 @@ def arena_page():
     return FileResponse(ARENA_HTML, media_type="text/html")
 
 
+@app.get("/shield")
+def shield_page():
+    # AI Call Shield: follows a scam call's script on the phone. Exempt from the licence gate like the other pages.
+    return FileResponse(SHIELD_HTML, media_type="text/html")
+
+
 @app.get(STATIC_PREFIX + "/theme.css")
 def theme_css():
     # One stylesheet for both pages. Under /static, so it loads while the licence is expired too.
@@ -519,6 +526,17 @@ def ai_reader_js():
 @app.get(STATIC_PREFIX + "/ai/reader_model.json")
 def ai_reader_model():
     return FileResponse(AI_DIR / "reader_model.json", media_type="application/json")
+
+
+@app.get(STATIC_PREFIX + "/ai/shield.js")
+def ai_shield_js():
+    # The AI Call Shield's model code. It runs in the browser; no call text ever reaches this server.
+    return FileResponse(AI_DIR / "shield.js", media_type="application/javascript")
+
+
+@app.get(STATIC_PREFIX + "/ai/shield_model.json")
+def ai_shield_model():
+    return FileResponse(AI_DIR / "shield_model.json", media_type="application/json")
 
 
 @app.get("/health")

@@ -3,12 +3,14 @@
 Report and verify scams in seconds, anonymously.
 
 - **Live app:** <https://scammap-yp1k.onrender.com> (opens on Report; <https://scammap-yp1k.onrender.com/#check> opens Check)
+- **AI Call Shield:** <https://scammap-yp1k.onrender.com/shield> (press "Play a demo call")
 - **Live scam map:** <https://scammap-yp1k.onrender.com/live>
 - **Judge console:** <https://scammap-yp1k.onrender.com/judge>
 - **Scam Arena:** <https://scammap-yp1k.onrender.com/arena>
 
-One website, one look, four pages:
+One website, one look, five pages:
 
+- **AI Call Shield (`/shield`)**: scam calls change numbers, not scripts. Type what a caller says, line by line, and the AI on the phone names the scam script, the step the caller is on, and **what they will ask for next, before they ask**. Nothing typed leaves the phone, and no LLM is used. See [AI Call Shield](#ai-call-shield-it-knows-the-callers-script).
 - **The app (`/`)**: Check, Report and My area, on a phone or a laptop. English and हिन्दी, icons for every choice, no login, no name, no phone number asked. On a laptop a side panel explains the trust rules and links to the judge console.
   - **Paste anything.** Paste a whole SMS or WhatsApp message and the app picks out the number, UPI ID, link or sender itself, on the phone.
   - **On-device AI reading.** An AI on the phone reads the pasted message and suggests the kind of scam, labelled "AI suggestion, can be wrong". The message never leaves the phone. See [AI in ScamMap](#ai-in-scammap).
@@ -24,6 +26,45 @@ One website, one look, four pages:
 - **AI watchdog**: every answer with 3+ reports carries an advisory AI opinion on whether the reports look coordinated, with its reasons. The rules decide; the AI never changes a verdict. See [The AI watchdog](#the-ai-watchdog-a-second-opinion-that-never-decides).
 - **Signed answers**: every lookup carries an Ed25519 signature, so a bank can later prove which server said what, and when. See [Signed answers](#signed-answers).
 - Security notes: [SECURITY.md](SECURITY.md). Libraries, services and AI tools: [DISCLOSURE.md](DISCLOSURE.md).
+
+---
+
+## AI Call Shield: it knows the caller's script
+
+`/shield`, and "AI Shield" in the menu on every page. Scam calls follow scripts, and the caller changes numbers but not the script. While someone is on a call, they type or paste what the caller says, line by line. The AI on the phone answers four things:
+
+- which script it is: digital arrest, bank KYC and OTP, task job, or UPI refund and QR;
+- which of its 5 steps the caller is on;
+- **what they will ask for next, before they ask**;
+- what to do right now: hang up, call 1930, ask family, or report the number.
+
+"Play a demo call" plays a made-up "CBI officer" digital-arrest call. The AI names each step as it comes and marks the steps it predicted one line early: on the demo call, 4 of 4.
+
+**How it works.**
+- **Reading each line.** A multinomial Naive Bayes model scores each line against the 20 script steps and "chatter" (ordinary call talk, which it skips). It uses the same tokenizer and features as the message reader.
+- **Following the call.** A hidden Markov model follows the call: each script runs forward through its steps (stay, next, skip ahead; rarely back). After every line, the forward algorithm turns the line scores into "which script, which step", so one unclear line does not throw it off. The transition table gives the most likely next step.
+- **On the phone.** Everything runs in the browser (`app/static/ai/shield.js`). The model file (`app/static/ai/shield_model.json`, 115 KB) is downloaded once. What the person types is never sent, and a browser test records every request to check this. The "Ask family" message names the script and the step, never the caller's words.
+- **Advisory only.** No LLM and no outside service. It never touches a verdict and is labelled "AI suggestion, can be wrong".
+- **Reproduce it.**
+  - `python tools/ai/shield_data.py` writes the 740 synthetic training lines in English, Hinglish and Hindi.
+  - `python tools/ai/train_shield.py` cross-validates, checks the held-out calls and writes the model.
+  - A browser test checks that the browser and Python give the same answer on every held-out call.
+
+Results **on our synthetic data** (real calls: not measured):
+
+| Measure | Result |
+|---|---|
+| Lines put on the right step (5-fold cross-validation, 740 lines) | 92.8% |
+| Lines put on the right script | 93.5% |
+| 9 calls written separately, never trained on: right script, step and next step | 9 of 9, after one fix (below) |
+| 3 short calls with skipped steps, written before that fix was run | 3 of 3 |
+
+The fix: the first version could not skip two steps ahead, so a Hinglish call that went from accusation straight to payment stayed on "accusation" (8 of 9). Real callers skip steps, and people type only the key lines, so we added a small chance of a longer jump ahead. Because one of the 9 calls showed us the problem, the 9 are no longer a blind test of that change; the 3 newer calls are.
+
+Limits:
+- Four scripts only. A call that follows another script gets the nearest one, or no reading.
+- The training lines are synthetic, written for this project. A caller who avoids the usual words gets a weak or wrong reading.
+- It needs the words typed in; it does not listen to the call.
 
 ---
 
@@ -94,7 +135,7 @@ JSON in and out. Times are ISO 8601 with `+05:30`. Errors: `{"error": "<code>"}`
 
 The last four routes are our own additions. The organisers' routes above them are unchanged.
 
-When the licence is not valid, every route except `/health`, `/license`, the pages (`/`, `/live`, `/judge`, `/arena`) and static files returns `403 {"error": "LICENSE_EXPIRED"}`.
+When the licence is not valid, every route except `/health`, `/license`, the pages (`/`, `/live`, `/judge`, `/arena`, `/shield`) and static files returns `403 {"error": "LICENSE_EXPIRED"}`.
 
 Unknown routes return `404 {"error": "not_found"}`. Wrong method returns `405 {"error": "method_not_allowed"}`. Error messages never echo user input.
 
@@ -192,7 +233,7 @@ We say these out loud. In our tests:
 
 ## AI in ScamMap
 
-ScamMap has two AI parts, and both are advisory. This one runs on the phone: a reader for a message the person pastes. It suggests which kind of scam the message looks like. The other is the [AI watchdog](#the-ai-watchdog-a-second-opinion-that-never-decides) on the server. **Neither sets, raises or lowers a verdict.** Verdicts come only from the trust rules, and no LLM or outside model is called. The Scam Arena's "Let our AI attack" is an automated attacker that searches attack plans at random. It is not a model, and it runs only in the sandbox.
+ScamMap has three AI parts, and all are advisory. The third, the [AI Call Shield](#ai-call-shield-it-knows-the-callers-script), follows a whole call and is described in its own section. This one runs on the phone: a reader for a message the person pastes. It suggests which kind of scam the message looks like. The other is the [AI watchdog](#the-ai-watchdog-a-second-opinion-that-never-decides) on the server. **Neither sets, raises or lowers a verdict.** Verdicts come only from the trust rules, and no LLM or outside model is called. The Scam Arena's "Let our AI attack" is an automated attacker that searches attack plans at random. It is not a model, and it runs only in the sandbox.
 
 - **What you see.** Paste a message into Check or Report. The app shows "AI reading of this message": the kind of scam it looks like, how sure it is, the 3 words that drove it, and red flags (pushes you to act fast, asks for money, mentions police, court or arrest, asks for an OTP, PIN or code, has a link, promises a prize, a job that asks for a deposit). It is labelled "AI suggestion, can be wrong", in English and Hindi.
 - **In Report** it pre-selects the kind of scam only when it is 0.7 sure or more and the person has not picked one. One tap on another tile changes it, and the reader does not change it back.
@@ -431,10 +472,10 @@ All results below are from our own synthetic data and generators. They are not f
 # Engine tests (283 passed, 2 known limits)
 python -m pytest tests/engine -q
 
-# Everything except the browser tests (417 passed, 2 known limits)
+# Everything except the browser tests (426 passed, 2 known limits)
 python -m pytest tests -q --ignore=tests/e2e
 
-# Browser tests, phone and laptop size (48 passed; first run: python -m playwright install chromium)
+# Browser tests, phone and laptop size (54 passed; first run: python -m playwright install chromium)
 python -m pytest tests/e2e -q
 
 # Paste-anything: the extractor and a phone flow (Node 22, uses the Python Playwright above; 3 passed)
