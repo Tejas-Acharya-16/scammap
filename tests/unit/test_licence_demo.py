@@ -26,7 +26,8 @@ LOOKUP = {"type": "phone", "value": "9000000042"}
 # Every API route behind the licence gate (GET /, GET /judge, /health and /license stay open).
 GATED = [("GET", "/lookup?type=phone&value=9000000042"), ("GET", "/map?pincode=560102"),
          ("GET", "/alerts?pincode=560102"), ("POST", "/reports"), ("POST", "/challenges"),
-         ("POST", "/demo/run"), ("POST", "/admin/reset")]
+         ("POST", "/demo/run"), ("POST", "/admin/reset"), ("POST", "/arena/attack"),
+         ("POST", "/arena/redteam")]
 
 
 def _readme_report() -> dict:

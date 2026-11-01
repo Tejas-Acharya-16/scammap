@@ -60,3 +60,12 @@ Decisions that took more than 10 minutes. Newest last.
 - Cost if wrong: an advisory "high" on a real scam would confuse a reader. The verdict stays right either way.
 - Status: done on branch `ai-watchdog`; 21 tests; judge console AI section, 6 checks.
 
+
+## 9. Scam Arena: a plan the red team finds must replay the same way
+- Question: 06:00 on 1 Nov. The red team runs 150 plans in one shared sandbox, and a judge replays its cheapest plan on a fresh sandbox. How do both give the same answer?
+- Options: random data on every launch (a replay can differ near a rule boundary); an extra `seed` field in the plan; seed every attack from the plan itself.
+- Chosen: the third. Each plan's times and words come from a generator seeded with a hash of the plan, and times are in whole seconds. In the shared sandbox each plan gets its own number, accounts and report IDs, so plans cannot give each other a track record. The two cheapest plans are replayed on fresh sandboxes before the reply. Why: no extra API field, and `tests/unit/test_arena.py` checks the replay.
+- Also decided: the red team attacks only unlisted numbers, because the verified list always wins. "People needed" is the smaller of accounts and networks (one person, one account, one network). The attack's scam type is new to the attacked areas, so counted fakes would show up as NEW_TYPE alerts.
+- Would change our mind: judges wanting new random data on every launch. Then we would add an optional seed.
+- Cost if wrong: a replayed plan shows a different outcome. Low: a test replays the cheapest plan.
+- Status: done on branch `arena`. Not merged; the Arena is first in the cut order.

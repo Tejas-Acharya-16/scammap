@@ -216,6 +216,54 @@ Limits:
 
 ---
 
+## Scam Arena: play the attacker
+
+`/arena` lets a judge plan a fake-report attack and watch both layers answer. The judge console links to it from a card called "Play the attacker". **It is sandbox only.** Every attack runs on a fresh in-memory engine built from the same code and trust config as this server. It uses synthetic data only: numbers +91 90000 xxxxx, reporter IDs `r_arena_N`, networks `10.x.y` and notes made of random syllables. It never reads or writes the live data or the database, and a test compares the live report count and database rows before and after.
+
+- **The sliders.**
+  - Target: a verified business or an unlisted number.
+  - Reports: 3 to 60.
+  - Fake accounts, networks, and areas (1 to 12).
+  - How long the claimed calls are spread over: 15 minutes to 7 days.
+  - Notes: copy-paste, reworded, own words or empty.
+  - Backdating: calls claimed over 5 days, all filed within the chosen time.
+
+  Six presets load the classic tricks.
+- **The answer.** There are three outcomes:
+  - CAUGHT: the rules kept the number below Known scam.
+  - YOU BEAT THE RULES, AI FLAGGED IT: Known scam, but the AI watchdog said high or medium.
+  - YOU BEAT BOTH.
+
+  With the outcome come: reports → voices, the rules that linked the reports in plain words, the watchdog's reasons, the alerts raised, how far the 7-day map moved, and the attack bill. The bill lists fake accounts, networks, areas, hours and people needed. Each person brings one account and one network, so people needed is the smaller of the two. The attack uses a scam type that is new to the attacked areas, so fakes that got counted would show up as alerts.
+- **Let our AI attack.** Our automated attacker is a random search, not a language model. It tries 150 plans with the same sliders in one sandbox and stops at 4 seconds. It reports:
+  - how many plans beat the rules;
+  - how many of those the watchdog flagged;
+  - the cheapest plan that beat the rules, and the cheapest that beat both. Cheapest means fewest accounts, then networks, then areas, then hours.
+
+  "Load this plan" replays a plan. The same plan always plants the same reports, so a replay gives the same answer. The verified list always wins, so the red team attacks only unlisted numbers.
+- **API.** These routes are extra; the API in BUILD_SPEC section 3 is unchanged.
+  - `POST /arena/attack` takes all eight fields: `target`, `reports`, `accounts`, `networks`, `areas`, `hours`, `words` and `backdate`.
+  - `POST /arena/redteam` takes an optional `{"seed": n}`.
+
+  Both routes sit behind the licence gate and share the judge console's one-at-a-time lock, so a second run gets 429 `busy`. Any bad value gets 400 `{"error":"invalid_params"}`, which never says which value was wrong. Replies hold only counts, verdicts, area codes and fixed phrases.
+
+Results **in this sandbox** (1 Nov 2026, `python -m pytest tests/unit/test_arena.py -s`):
+
+| Attack | Verdict | AI watchdog | Outcome |
+|---|---|---|---|
+| 40 friends vs the verified bakery | VERIFIED_BUSINESS | low | caught |
+| 22 accounts on one Wi-Fi | SUSPICIOUS, 1 voice | high | caught |
+| One account, 6 reports | SUSPICIOUS, 1 voice | high | caught |
+| 40 pasted copies in 1 hour | SUSPICIOUS, 1 voice | high | caught |
+| Backdated ring: 12 accounts, 12 networks, 6 areas, filed within 1 hour | KNOWN_SCAM | high | beat the rules, AI flagged it |
+| 1 + 10 friends in 11 areas, own words, within 1 hour | KNOWN_SCAM | low | beat both: our known limit |
+
+Red team results for seed 7:
+- It tried 150 plans in under a second on our build machine. 35 beat the rules, and the watchdog flagged 18 of those.
+- The cheapest plan that beat the rules used 3 accounts on 3 networks in 3 areas, over 7 days. That is by design: three separate people over a week look exactly like a real report.
+
+---
+
 ## How the licence works
 
 The server runs under a signed licence. An Ed25519 public key is built into the server code. The private key never leaves the operator's machine and is never in this repository.
