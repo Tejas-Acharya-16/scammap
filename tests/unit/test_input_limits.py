@@ -22,7 +22,7 @@ def padded(n_bytes: int) -> bytes:
     return head + b"a" * (n_bytes - len(head) - len(tail)) + tail
 
 
-POST_ROUTES = ("/reports", "/challenges", "/license", "/demo/run", "/admin/reset")
+POST_ROUTES = ("/reports", "/challenges", "/license", "/demo/run", "/admin/reset", "/arena/attack", "/arena/redteam")
 
 
 @pytest.mark.parametrize("path", POST_ROUTES)
@@ -32,7 +32,8 @@ def test_body_over_the_cap_is_413_on_every_post_route(client, path):
     assert r.json() == {"error": "request_too_large"}
 
 
-@pytest.mark.parametrize("path", ("/reports", "/challenges", "/license", "/demo/run"))   # the routes that read a body
+@pytest.mark.parametrize("path", ("/reports", "/challenges", "/license", "/demo/run", "/arena/attack",
+                                  "/arena/redteam"))   # the routes that read a body
 def test_chunked_body_over_the_cap_is_413_too(client, path):
     def chunks():                       # no Content-Length header: the size is only known by counting
         body = padded(LIMIT + 1)

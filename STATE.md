@@ -27,6 +27,10 @@ Live: https://scammap-yp1k.onrender.com (app at `/`, judge console at `/judge`).
 
 - One branch with osm-tiles, #15 AI watchdog, #12 signed answers, #16 AI message reader and #13 paste-anything, conflicts resolved. Fixes: a single typed or pasted value is checked exactly as written (the stored-XSS test failed with #13 alone); the watchdog's page names renamed (`wd`) so they cannot clash with the reader's (`ai`); an AI reading at 0.7 or more sets the kind of scam over the keyword rule (Codex's test now expects courier-customs for the parcel-link message). Tests: engine 283 passed, 2 xfailed; all but browser 373 passed, 2 xfailed; browser 38 passed; Node 3 passed. Trust config unchanged (`d7a23b4c`).
 
+## Added at 06:45 (branch `arena`, not merged)
+
+- Scam Arena at `/arena`, linked from the judge console ("Play the attacker"): presets, sliders, a dark result panel, and "Let our AI attack" (a random search over 150 plans). It is sandbox only: a test shows the live report count and database rows unchanged. Tests: 40 unit and 5 Playwright. Full suite: 417 passed and 2 xfailed, e2e 43 passed, node 3 passed. In this sandbox: the backdated ring beats the rules but the AI flags it; 1 + 10 friends in 11 areas beats both (our known limit). The Arena is first in the cut order.
+
 ## Open issues
 
 1. Stored XSS in how a reported link is shown: fix written (security hardening patches), not merged yet.

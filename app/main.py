@@ -24,7 +24,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import BigInteger, Boolean, Column, Integer, MetaData, Table, Text, create_engine, select, delete
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app import demo
+from app import arena, demo
 from app.attestation import Signer
 from app.engine import Engine, Registry
 from app.engine.normalise import normalise, normalise_type
@@ -176,9 +176,10 @@ REGISTRY = Registry.from_dir(Path(__file__).parent / "data")
 INDEX_HTML = Path(__file__).parent / "static" / "index.html"
 JUDGE_HTML = Path(__file__).parent / "static" / "judge.html"
 LIVE_HTML = Path(__file__).parent / "static" / "live.html"
+ARENA_HTML = Path(__file__).parent / "static" / "arena.html"
 THEME_CSS = Path(__file__).parent / "static" / "theme.css"   # the shared look of / and /judge
 AI_DIR = Path(__file__).parent / "static" / "ai"           # on-device message reader (runs in the browser only)
-PAGES = frozenset({"/", "/judge", "/live"})  # served on GET only; exempt from the licence gate
+PAGES = frozenset({"/", "/judge", "/live", "/arena"})  # served on GET only; exempt from the licence gate
 
 # Which deploy is answering (headers on /health)
 COMMIT = os.environ.get("RENDER_GIT_COMMIT", "dev")[:7]
@@ -497,6 +498,12 @@ def live_page():
     return FileResponse(LIVE_HTML, media_type="text/html")
 
 
+@app.get("/arena")
+def arena_page():
+    # The Scam Arena: a judge plays the attacker. Exempt from the licence gate like /judge; its POST routes are gated.
+    return FileResponse(ARENA_HTML, media_type="text/html")
+
+
 @app.get(STATIC_PREFIX + "/theme.css")
 def theme_css():
     # One stylesheet for both pages. Under /static, so it loads while the licence is expired too.
@@ -631,3 +638,38 @@ async def demo_run(request: Request):
     finally:
         _DEMO_LOCK.release()
     return JSONResponse(result)
+
+
+# ── Scam Arena (app/arena.py): sandbox only, like /demo/run ─────────────────
+_BAD_PARAMS = {"error": "invalid_params"}       # never says which value was wrong, never echoes it
+
+
+async def _sandboxed(fn, *args):
+    if not _DEMO_LOCK.acquire(blocking=False):
+        return JSONResponse({"error": "busy"}, status_code=429)
+    try:
+        result = await run_in_threadpool(fn, *args)
+    finally:
+        _DEMO_LOCK.release()
+    return JSONResponse(result)
+
+
+@app.post("/arena/attack")
+async def arena_attack(request: Request):
+    # One attack on a fresh in-memory engine: never the live data or the DB.
+    try:
+        plan = arena.parse_plan(await _read_json(request))
+    except Exception:
+        return JSONResponse(_BAD_PARAMS, status_code=400)
+    return await _sandboxed(arena.attack, REGISTRY, ENGINE.config, plan)
+
+
+@app.post("/arena/redteam")
+async def arena_redteam(request: Request):
+    # Our automated attacker: a random search over the same plans, in one sandbox, stopping at 4 s.
+    try:
+        raw = await request.body()
+        seed = arena.parse_seed(json.loads(raw) if raw.strip() else {})
+    except Exception:
+        return JSONResponse(_BAD_PARAMS, status_code=400)
+    return await _sandboxed(arena.redteam, REGISTRY, ENGINE.config, seed)
