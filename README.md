@@ -174,7 +174,7 @@ We say these out loud. In our tests:
 
 ## AI in ScamMap
 
-ScamMap has one AI part, and it runs on the phone: a reader for a message the person pastes. It suggests which kind of scam the message looks like. **It never sets, raises or lowers a verdict.** Verdicts come only from the trust rules on the server, and the server runs no model.
+ScamMap has two AI parts, and both are advisory. This one runs on the phone: a reader for a message the person pastes. It suggests which kind of scam the message looks like. The other is the [AI watchdog](#the-ai-watchdog-a-second-opinion-that-never-decides) on the server. **Neither sets, raises or lowers a verdict.** Verdicts come only from the trust rules, and no LLM or outside model is called.
 
 - **What you see.** Paste a message into Check or Report. The app shows "AI reading of this message": the kind of scam it looks like, how sure it is, the 3 words that drove it, and red flags (pushes you to act fast, asks for money, mentions police, court or arrest, asks for an OTP, PIN or code, has a link, promises a prize, a job that asks for a deposit). It is labelled "AI suggestion, can be wrong", in English and Hindi.
 - **In Report** it pre-selects the kind of scam only when it is 0.7 sure or more and the person has not picked one. One tap on another tile changes it, and the reader does not change it back.
