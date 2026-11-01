@@ -27,21 +27,23 @@ Live: https://scammap-yp1k.onrender.com (app at `/`, judge console at `/judge`).
 
 - One branch with osm-tiles, #15 AI watchdog, #12 signed answers, #16 AI message reader and #13 paste-anything, conflicts resolved. Fixes: a single typed or pasted value is checked exactly as written (the stored-XSS test failed with #13 alone); the watchdog's page names renamed (`wd`) so they cannot clash with the reader's (`ai`); an AI reading at 0.7 or more sets the kind of scam over the keyword rule (Codex's test now expects courier-customs for the parcel-link message). Tests: engine 283 passed, 2 xfailed; all but browser 373 passed, 2 xfailed; browser 38 passed; Node 3 passed. Trust config unchanged (`d7a23b4c`).
 
-## Added at 06:15 (branch `arena`, not merged)
+## Merged and deployed by 06:27 (PR #20 Scam Arena, PR #19 ask-family button; Render deploy of `1d2881e` succeeded)
 
 - Scam Arena at `/arena`, linked from the judge console ("Play the attacker"): presets, sliders, a dark result panel, and "Let our AI attack" (a random search over 150 plans). It is sandbox only: a test shows the live report count and database rows unchanged. Tests: 40 unit and 5 Playwright. Full suite: 417 passed and 2 xfailed, e2e 43 passed, node 3 passed. In this sandbox: the backdated ring beats the rules but the AI flags it; 1 + 10 friends in 11 areas beats both (our known limit). The Arena is first in the cut order.
+- Ask family before you pay: a Check result that is Known scam or Suspicious opens WhatsApp with a ready message for family (PR #19).
+- 06:40: README refreshed for everything above; live attack table refreshed (engine v1.3, 1 Nov 02:42). Main plus this change: engine 283 passed and 2 xfailed, everything except the browser tests 417 passed and 2 xfailed, browser 48 passed, node 3 passed.
 
 ## Open issues
 
-1. Stored XSS in how a reported link is shown: fix written (security hardening patches), not merged yet.
+1. Stored XSS in how a reported link is shown: fixed and merged; the 4 browser tests in `tests/e2e/test_xss_playwright.py` pass.
 2. Render free instance sleeps after 15 minutes idle and is slow during a bulk upload: keep-awake monitor on `/health`; a paid instance for judging.
-3. Known limits: reports with empty notes; friends who each pick a different area; rings of 3 to 7.
+3. Known limits: friends who each pick a different area; rings of 3 to 7; 8 or more people pasting one example note within 2 hours (held as SUSPICIOUS). Empty notes were fixed in engine v1.3.
 4. Repository visibility for the judges: ask the organisers (public, or shared).
 5. Hindi strings need a check by a Hindi speaker.
 
 ## Next three tasks
 
-1. Merge the security hardening, then check `/judge` 26/26 on live.
+1. On live after the 06:27 deploy: `/judge` Run all checks (32/32 locally), one `/arena` preset and "Let our AI attack".
 2. Record the backup video (`VIDEO_SCRIPT.md`) on seeded demo data.
 3. Checkpoint 2 at 06:00; before judging: `POST /admin/reset`, then the read-only smoke test.
 
