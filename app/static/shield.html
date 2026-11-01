@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Call Shield · Community Scam Map</title>
+<link rel="stylesheet" href="/static/theme.css">
+<style>
+/* AI Call Shield. The shared look is in /static/theme.css; the AI's view is a dark evidence panel. */
+body{font-size:15px}
+main{max-width:1240px;margin:0 auto;padding:16px 16px 56px}
+h2{font-size:17px;margin:0 0 10px;letter-spacing:-.01em}
+p{margin:6px 0}
+.hero{padding:20px}
+.hero h1{margin:10px 0 8px;font-size:28px;line-height:1.12;font-weight:650;letter-spacing:-.025em}
+.hero h1 em{color:var(--accent-strong);font-style:normal}
+.hero>p{max-width:860px;color:var(--ink-2)}
+.badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.badges .tag{font-size:11.5px;padding:3px 9px}
+.note{background:var(--amber-soft);border:1px solid var(--amber-line);border-radius:12px;padding:10px 12px;font-size:13px;margin-top:8px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+@media (min-width:900px){main{padding:28px 24px 64px}.hero{padding:28px 30px}.hero h1{font-size:40px}.grid{grid-template-columns:minmax(0,1fr) minmax(0,1.05fr)}}
+.demos{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
+.demos button{border:1px solid var(--line-2);background:var(--surface);border-radius:var(--pill);padding:7px 12px;font-size:13.5px;color:var(--ink-2);cursor:pointer;max-width:100%;text-align:left}
+.demos button.main{border-color:var(--accent);background:var(--accent);color:var(--accent-ink);font-weight:650}
+.demos button:disabled{opacity:.55;cursor:default}
+#transcript{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;min-height:60px}
+#transcript:empty::before{content:attr(data-empty);color:var(--muted);font-size:14px}
+.bubble{background:var(--surface-2);border:1px solid var(--line);border-radius:14px 14px 14px 4px;padding:9px 12px;font-size:14.5px;overflow-wrap:anywhere}
+.bubble .who{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+html[lang="hi"] .bubble .who{letter-spacing:.02em}
+.bubble .st{display:inline-block;margin-top:6px;font-size:12px;font-weight:650;color:var(--warn-text);background:var(--warn-soft);border:1px solid var(--warn-line);border-radius:var(--pill);padding:2px 8px}
+.bubble .hit{display:inline-block;margin:6px 0 0 6px;font-size:12px;font-weight:700;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:var(--pill);padding:2px 8px}
+.ask{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin-top:14px}
+.ask textarea{width:100%;min-height:64px;font:inherit;font-size:15px;padding:10px 12px;border:1px solid var(--line-2);border-radius:12px;resize:vertical;background:var(--surface)}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+.row .btn{flex:1 1 140px}
+/* the AI's view */
+.dark{--green:#3DDC8B;--warn:#FF8B7A;background-color:var(--night);color:var(--night-ink);border-color:var(--night-2);background-size:28px 28px;
+  background-image:linear-gradient(var(--night-line) 1px,transparent 1px),linear-gradient(90deg,var(--night-line) 1px,transparent 1px)}
+.dark h3{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:16px 0 6px}
+html[lang="hi"] .dark h3{letter-spacing:.02em;font-family:var(--font);font-size:12.5px}
+.dark .muted{color:var(--night-muted)}
+.idle{color:var(--night-muted);font-size:15px;padding:8px 0}
+.script{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.script b{font-size:24px;color:#fff;letter-spacing:-.01em}
+.conf{font-family:var(--mono);font-weight:700;color:var(--gold)}
+.danger{display:inline-block;font-family:var(--mono);font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:var(--pill);border:1px solid}
+html[lang="hi"] .danger{letter-spacing:0;font-family:var(--font)}
+.d0,.d1{color:var(--gold);border-color:var(--gold)}
+.d2,.d3,.d4{color:var(--warn);border-color:var(--warn);background:rgba(255,139,122,.1)}
+ol.steps{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+ol.steps li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:8px;align-items:start;padding:8px 10px;border:1px solid rgba(255,255,255,.12);border-radius:10px;font-size:14px;color:var(--night-muted);overflow-wrap:anywhere}
+ol.steps li .n{font-family:var(--mono);font-weight:700;text-align:center;border-radius:50%;border:1px solid rgba(255,255,255,.3);width:22px;height:22px;line-height:20px;font-size:12px}
+ol.steps li.done{color:var(--night-ink)}
+ol.steps li.done .n{background:rgba(255,255,255,.12)}
+ol.steps li.now{color:#fff;border-color:var(--warn);background:rgba(255,139,122,.12);font-weight:600}
+ol.steps li.now .n{background:var(--warn);border-color:var(--warn);color:#2a0d08}
+ol.steps li.next{border-style:dashed;border-color:var(--gold);color:var(--night-ink)}
+.next{border:1px dashed var(--gold);border-radius:12px;padding:10px 12px;font-size:16px;font-weight:650;color:#fff;overflow-wrap:anywhere}
+.do{border-left:4px solid var(--green);background:rgba(61,220,139,.08);border-radius:8px;padding:10px 12px;font-size:15px;color:#fff;overflow-wrap:anywhere}
+.why{display:flex;flex-wrap:wrap;gap:6px}
+.why code{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:6px;padding:2px 7px;color:#fff}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.acts .btn{flex:1 1 150px;min-height:44px;font-size:14.5px}
+.dark .btn.alt{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.24);color:var(--night-ink)}
+.score{margin-top:12px;font-size:14px;color:var(--gold);font-weight:650}
+.foot{margin-top:14px;font-size:12.5px}
+.how ul{margin:6px 0 0;padding-left:18px}
+.how li{margin:4px 0}
+.banner{background:var(--warn);color:#fff;padding:10px 24px;font-weight:600;text-align:center}
+.locked .grid{opacity:.45;pointer-events:none}
+</style>
+</head>
+<body>
+<div class="strip"><div class="in"><b data-t="stripA">Anonymous by design</b> <span data-t="stripB">· no login, no name, no phone number asked</span></div></div>
+<header class="site"><div class="in">
+  <a class="brand" href="/" aria-label="Community Scam Map"><span class="mk" aria-hidden="true"></span><span class="wm"><b>Community <span>Scam Map</span></b><small data-t="tag">Report · check · anonymous</small></span></a>
+  <nav class="sitenav" aria-label="Main"><a href="/#check" data-t="tCheck">Check</a><a href="/#report" data-t="tReport">Report</a><a href="/#area" data-t="tArea">My area</a><a class="nl" href="/live"><span class="lg" data-t="tLive">Live map</span><span class="sm" data-t="tLiveS">Map</span></a><a class="nai on" href="/shield" aria-current="page"><span class="lg" data-t="tAI">AI Shield</span><span class="sm" data-t="tAIS">AI</span></a><a class="nj" href="/judge"><span class="lg" data-t="tJudge">Judge console</span><span class="sm" data-t="tJudgeS">Judge</span></a></nav>
+  <div class="tools"><span id="licPill" class="pill" role="status"><i></i><span class="pl-w" data-t="licW">Licence</span><span id="licTxt">…</span></span><span class="lang"><button id="l-en" class="on">EN</button><button id="l-hi">हिन्दी</button></span></div>
+</div></header>
+<div id="lockBanner" class="banner hidden">Licence expired. Contact your provider. <span lang="hi">लाइसेंस समाप्त हो गया है। अपने प्रदाता से संपर्क करें।</span></div>
+<main id="main">
+  <section class="card hero">
+    <p class="eyebrow" data-t="eyebrow">AI Call Shield</p>
+    <h1><span data-t="h1a">Scam calls follow a script.</span> <em data-t="h1b">Our AI knows it.</em></h1>
+    <p data-t="intro">On a call that feels wrong? Type what the caller says, line by line. The AI on this phone works out which scam script it is, which step you are on, and what they will ask for next, before they ask.</p>
+    <div class="badges"><span class="tag" data-t="b1">AI on this phone</span><span class="tag" data-t="b2">Nothing you type is sent</span><span class="tag" data-t="b3">No LLM</span><span class="tag" data-t="b4">English, हिन्दी, Hinglish</span><span class="tag idle" data-t="b5">AI suggestion, can be wrong</span></div>
+    <p id="hiNote" class="note hidden" lang="hi">AI की बातें और सलाह हिन्दी में हैं; डेमो कॉल अंग्रेज़ी, हिंग्लिश और हिन्दी में हैं।</p>
+  </section>
+  <div class="grid">
+    <section class="card" id="callCard">
+      <h2 data-t="hCall">The call</h2>
+      <div id="demos" class="demos">
+        <button class="main" data-demo="arrest" data-t="dArrest">▶ Play a demo call: a "CBI officer"</button>
+        <button data-demo="kyc" data-t="dKyc">Bank KYC</button>
+        <button data-demo="job" data-t="dJob">Task job</button>
+        <button data-demo="upi" data-t="dUpi">UPI refund (हिन्दी)</button>
+      </div>
+      <ol id="transcript" data-empty="No lines yet. Play a demo call, or type what the caller says."></ol>
+      <div class="ask">
+        <label for="line" class="muted" data-t="lLine">What did the caller just say?</label>
+        <textarea id="line" placeholder="e.g. Your parcel has drugs in it, an FIR is registered against you"></textarea>
+        <div class="row"><button id="add" class="btn" data-t="add">Add line</button><button id="clear" class="btn alt" data-t="clear">New call</button></div>
+      </div>
+    </section>
+    <section class="card dark" id="panel" aria-live="polite">
+      <div id="view"></div>
+    </section>
+  </div>
+  <section class="card how" id="how">
+    <h2 data-t="hHow">How it works</h2>
+    <ul>
+      <li data-t="how1">Scam calls follow scripts in fixed steps. We wrote 4 of them down: digital arrest, bank KYC and OTP, task jobs and UPI refunds, 5 steps each.</li>
+      <li data-t="how2">A Naive Bayes model reads each line you add and scores every step. A hidden Markov model then follows the call forward through the script, so one unclear line does not throw it off, and it can say which step usually comes next.</li>
+      <li data-t="how3">Both run in this browser. The model file is downloaded once; what you type is never sent anywhere. No LLM, no outside service.</li>
+    </ul>
+    <p id="stats" class="muted"></p>
+  </section>
+</main>
+<script src="/static/ai/reader.js"></script>
+<script src="/static/ai/shield.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+// Demo calls: synthetic, made up for this page (numbers and names are not real).
+const DEMOS = {
+  arrest: ["Hello, I am calling from the courier office. A parcel in your name has been stopped at Mumbai customs.",
+           "The parcel has five fake passports and drugs. An FIR has been registered against you.",
+           "I am connecting you to the CBI officer. Please join a video call on Skype now.",
+           "You are under digital arrest. Do not cut the call and do not tell anyone in your family.",
+           "To prove you are innocent, transfer your savings to the RBI verification account."],
+  kyc: ["Sir main bank ke KYC department se bol raha hoon, aapka KYC expire ho gaya hai",
+        "Aaj shaam tak update nahi kiya to account block ho jayega",
+        "Main ek link bhej raha hoon, usme apni details bhar do",
+        "Abhi aapke phone pe ek OTP aayega, woh mujhe bata do"],
+  job: ["Hi, we have part-time work from home, earn 3,000 rupees a day by liking videos",
+        "You finished three tasks, 150 rupees commission is sent to your UPI",
+        "Join our Telegram group, the next tasks need a prepaid deposit of 1,000 rupees",
+        "Your account shows a negative balance, deposit 25,000 to withdraw everything"],
+  upi: ["मैंने आपका सोफ़ा देखा, मुझे खरीदना है, मैं आर्मी में हूँ",
+        "मैंने व्हाट्सऐप पर क्यूआर कोड भेजा है, स्कैन कीजिए",
+        "अब अपना यूपीआई पिन डालिए, पैसे आपके खाते में आ जाएँगे"],
+};
+const L = {
+  en: {tag: "Report · check · anonymous", tCheck: "Check", tReport: "Report", tArea: "My area", tJudge: "Judge console", tJudgeS: "Judge", tLive: "Live map", tLiveS: "Map", tAI: "AI Shield", tAIS: "AI",
+       stripA: "Anonymous by design", stripB: "· no login, no name, no phone number asked", licW: "Licence", licOk: "valid", licExp: "expired", licBad: "not valid",
+       eyebrow: "AI Call Shield", h1a: "Scam calls follow a script.", h1b: "Our AI knows it.",
+       intro: "On a call that feels wrong? Type what the caller says, line by line. The AI on this phone works out which scam script it is, which step you are on, and what they will ask for next, before they ask.",
+       b1: "AI on this phone", b2: "Nothing you type is sent", b3: "No LLM", b4: "English, हिन्दी, Hinglish", b5: "AI suggestion, can be wrong",
+       hCall: "The call", dArrest: "▶ Play a demo call: a \"CBI officer\"", dKyc: "Bank KYC", dJob: "Task job", dUpi: "UPI refund (हिन्दी)",
+       empty: "No lines yet. Play a demo call, or type what the caller says.", lLine: "What did the caller just say?", add: "Add line", clear: "New call",
+       caller: "Caller", stepTag: "Step {k}: {s}", hit: "✓ Predicted", waiting: "Waiting for the caller's words. Play a demo call to see the AI follow a scam script live.",
+       hScript: "Script the caller is following", sure: "{p}% sure", hSteps: "Where you are in the script", hNext: "What they will ask next", last: "This is the last step of the script. Stop now.",
+       hDo: "Do this now", hWhy: "Words that gave it away", hit2: "The AI predicted {n} of {m} steps before the caller got there.",
+       danger: ["Be careful", "Warning", "High risk", "High risk", "Stop now"], call: "Call 1930 (cyber crime helpline)", family: "Ask family now", report: "Report the number",
+       foot: "AI suggestion, can be wrong. It reads only what you type here, on this phone, and sends nothing. Trained on our own synthetic call scripts, not real calls.",
+       famMsg: "I am on a call that looks like the \"{s}\" scam (step {k}: {t}). Please call me right now, before I do anything.",
+       hHow: "How it works",
+       how1: "Scam calls follow scripts in fixed steps. We wrote 4 of them down: digital arrest, bank KYC and OTP, task jobs and UPI refunds, 5 steps each.",
+       how2: "A Naive Bayes model reads each line you add and scores every step. A hidden Markov model then follows the call forward through the script, so one unclear line does not throw it off, and it can say which step usually comes next.",
+       how3: "Both run in this browser. The model file is downloaded once; what you type is never sent anywhere. No LLM, no outside service.",
+       stats: "On our synthetic lines ({n}, 5-fold cross-validation): {a}% put on the right step, {b}% on the right script. Calls written separately and never trained on: right script in {c} of {t}, right step in {d} of {t}, right next step in {e} of {t}. Real calls: not measured."},
+  hi: {tag: "रिपोर्ट · जाँच · गुमनाम", tCheck: "जाँचें", tReport: "रिपोर्ट करें", tArea: "मेरा इलाका", tJudge: "जज कंसोल", tJudgeS: "जज", tLive: "लाइव नक्शा", tLiveS: "नक्शा", tAI: "एआई शील्ड", tAIS: "एआई",
+       stripA: "डिज़ाइन से गुमनाम", stripB: "· न लॉगिन, न नाम, न फ़ोन नंबर", licW: "लाइसेंस", licOk: "मान्य", licExp: "समाप्त", licBad: "अमान्य",
+       eyebrow: "AI कॉल शील्ड", h1a: "ठगी की कॉल एक स्क्रिप्ट से चलती हैं।", h1b: "हमारा AI उसे पहचानता है।",
+       intro: "कोई कॉल गड़बड़ लग रही है? कॉल करने वाला जो कहे, एक-एक लाइन लिखिए। इस फ़ोन पर चलने वाला AI बताता है कि यह कौन-सी ठगी की स्क्रिप्ट है, आप किस कदम पर हैं, और वे आगे क्या माँगेंगे, उनके माँगने से पहले।",
+       b1: "AI इसी फ़ोन पर", b2: "आपका लिखा कहीं नहीं जाता", b3: "कोई LLM नहीं", b4: "English, हिन्दी, Hinglish", b5: "AI का सुझाव, गलत हो सकता है",
+       hCall: "कॉल", dArrest: "▶ डेमो कॉल चलाएँ: एक \"CBI अधिकारी\"", dKyc: "बैंक KYC", dJob: "टास्क जॉब", dUpi: "UPI रिफंड (हिन्दी)",
+       empty: "अभी कोई लाइन नहीं। डेमो कॉल चलाइए, या कॉल करने वाले की बात लिखिए।", lLine: "कॉल करने वाले ने अभी क्या कहा?", add: "लाइन जोड़ें", clear: "नई कॉल",
+       caller: "कॉलर", stepTag: "कदम {k}: {s}", hit: "✓ पहले से बताया", waiting: "कॉल करने वाले की बातों का इंतज़ार। डेमो कॉल चलाकर देखिए कि AI स्क्रिप्ट को कैसे पकड़ता है।",
+       hScript: "कॉलर कौन-सी स्क्रिप्ट चला रहा है", sure: "{p}% भरोसा", hSteps: "आप स्क्रिप्ट में कहाँ हैं", hNext: "आगे वे क्या माँगेंगे", last: "यह स्क्रिप्ट का आखिरी कदम है। अभी रुकिए।",
+       hDo: "अभी यह कीजिए", hWhy: "इन शब्दों से पता चला", hit2: "AI ने {m} में से {n} कदम कॉलर के वहाँ पहुँचने से पहले बता दिए।",
+       danger: ["सावधान", "चेतावनी", "ख़तरा", "ख़तरा", "अभी रुकिए"], call: "1930 पर कॉल करें (साइबर क्राइम हेल्पलाइन)", family: "अभी परिवार से पूछें", report: "नंबर की रिपोर्ट करें",
+       foot: "AI का सुझाव, गलत हो सकता है। यह सिर्फ़ यहाँ लिखी बातें इसी फ़ोन पर पढ़ता है और कुछ नहीं भेजता। हमारी अपनी बनाई (सिंथेटिक) स्क्रिप्ट पर सिखाया गया, असली कॉल पर नहीं।",
+       famMsg: "मैं एक कॉल पर हूँ जो \"{s}\" ठगी जैसी लग रही है (कदम {k}: {t})। कुछ भी करने से पहले मुझे अभी कॉल कीजिए।",
+       hHow: "यह कैसे काम करता है",
+       how1: "ठगी की कॉल तय कदमों वाली स्क्रिप्ट से चलती हैं। हमने 4 स्क्रिप्ट लिखीं: डिजिटल अरेस्ट, बैंक KYC और OTP, टास्क जॉब और UPI रिफंड, हर एक में 5 कदम।",
+       how2: "Naive Bayes मॉडल आपकी हर लाइन पढ़कर हर कदम का अंक देता है। फिर hidden Markov मॉडल कॉल को स्क्रिप्ट में आगे-आगे फ़ॉलो करता है, ताकि एक अस्पष्ट लाइन से गड़बड़ न हो, और बता सके कि आगे आमतौर पर कौन-सा कदम आता है।",
+       how3: "दोनों इसी ब्राउज़र में चलते हैं। मॉडल फ़ाइल एक बार डाउनलोड होती है; आपका लिखा कहीं नहीं भेजा जाता। कोई LLM नहीं, कोई बाहरी सेवा नहीं।",
+       stats: "हमारी सिंथेटिक लाइनों पर ({n}, 5-fold cross-validation): {a}% सही कदम, {b}% सही स्क्रिप्ट। अलग से लिखी, कभी न सिखाई गई कॉल: सही स्क्रिप्ट {t} में से {c}, सही कदम {t} में से {d}, सही अगला कदम {t} में से {e}। असली कॉल पर: नापा नहीं गया।"},
+};
+let lang = "en", pillState = ["wait", ""], lines = [], timer = null, last = null, hits = 0, predicted = 0, prevNext = null, tags = [];
+try { lang = localStorage.getItem("lang") === "hi" ? "hi" : "en"; } catch (e) {}
+const T = (k, v) => { let s = L[lang][k] !== undefined ? L[lang][k] : L.en[k] !== undefined ? L.en[k] : k; if (v && typeof s === "string") for (const x in v) s = s.split("{" + x + "}").join(v[x]); return s; };
+const nm = o => lang === "hi" ? o.hi : o.en;
+
+// ------------------------------------------------------------------ following the call
+function follow() {
+  const d = ScamMapShield.decode(lines);
+  // which lines moved the AI, and did it call each step before it came?
+  tags = lines.map(() => null);
+  hits = 0; predicted = 0;
+  if (d) {
+    let prev = null;
+    d.path.forEach(p => {
+      const hit = prev && prev.playbook === p.playbook && prev.next === p.step;
+      tags[p.line] = {playbook: p.playbook, step: p.step, hit};
+      if (prev && prev.next != null) predicted += 1;
+      if (hit) hits += 1;
+      const n = ScamMapShield.playbooks().find(b => b.id === p.playbook).steps.length;
+      prev = {playbook: p.playbook, next: p.step + 1 < n ? p.step + 1 : null};
+    });
+  }
+  last = d;
+  render();
+}
+function renderTranscript() {
+  const books = ScamMapShield.playbooks() || [];
+  $("transcript").dataset.empty = T("empty");
+  $("transcript").innerHTML = lines.map((l, i) => {
+    const t = tags[i], b = t && books.find(x => x.id === t.playbook);
+    const st = t ? `<span class="st">${esc(T("stepTag", {k: t.step + 1, s: nm(b.steps[t.step])}))}</span>${t.hit ? `<span class="hit">${esc(T("hit"))}</span>` : ""}` : "";
+    return `<li class="bubble" data-step="${t ? esc(b.steps[t.step].id) : ""}"><span class="who">${esc(T("caller"))}</span>${esc(l)}<br>${st}</li>`;
+  }).join("");
+}
+function renderPanel() {
+  const panel = $("panel"), d = last;
+  if (!d) {
+    panel.dataset.playbook = ""; panel.dataset.step = ""; panel.dataset.next = "";
+    $("view").innerHTML = `<h3>${esc(T("hScript"))}</h3><p class="idle">${esc(T("waiting"))}</p><p class="muted foot">${esc(T("foot"))}</p>`;
+    return;
+  }
+  const book = ScamMapShield.playbooks().find(b => b.id === d.playbook);
+  const step = book.steps[d.step], nxt = d.next != null ? book.steps[d.next] : null;
+  panel.dataset.playbook = d.playbook; panel.dataset.step = step.id; panel.dataset.next = nxt ? nxt.id : "";
+  const pct = Math.min(99, Math.round(d.playbook_p * 100));
+  const fam = T("famMsg", {s: nm(book), k: d.step + 1, t: nm(step)});
+  $("view").innerHTML =
+    `<h3>${esc(T("hScript"))}</h3>
+     <div class="script"><b id="script">${esc(nm(book))}</b><span class="conf">${esc(T("sure", {p: pct}))}</span>
+       <span class="danger d${d.step}" id="danger">${esc(T("danger")[d.step])}</span></div>
+     <h3>${esc(T("hSteps"))}</h3>
+     <ol class="steps" id="steps">${book.steps.map((s, k) => `<li class="${k < d.step ? "done" : k === d.step ? "now" : k === d.next ? "next" : ""}"><span class="n">${k < d.step ? "✓" : k + 1}</span><span>${esc(nm(s))}</span></li>`).join("")}</ol>
+     <h3>${esc(T("hNext"))}</h3><div class="next" id="next">${esc(nxt ? nm(nxt) : T("last"))}</div>
+     <h3>${esc(T("hDo"))}</h3><div class="do" id="do">${esc(lang === "hi" ? step.do_hi : step.do_en)}</div>
+     ${d.why && d.why.length ? `<h3>${esc(T("hWhy"))}</h3><div class="why" id="why">${d.why.map(w => `<code>${esc(w)}</code>`).join("")}</div>` : ""}
+     ${predicted ? `<p class="score" id="score">${esc(T("hit2", {n: hits, m: predicted}))}</p>` : ""}
+     <div class="acts"><a class="btn" id="call1930" href="tel:1930">${esc(T("call"))}</a>
+       <a class="btn alt" id="family" href="https://wa.me/?text=${esc(encodeURIComponent(fam))}" target="_blank" rel="noopener noreferrer">${esc(T("family"))}</a>
+       <a class="btn alt" id="report" href="/#report">${esc(T("report"))}</a></div>
+     <p class="muted foot">${esc(T("foot"))}</p>`;
+}
+function render() { renderTranscript(); renderPanel(); }
+function stopDemo() { if (timer) { clearInterval(timer); timer = null; } $("demos").querySelectorAll("button").forEach(b => b.disabled = false); }
+function addLine(text) {
+  const t = String(text || "").trim();
+  if (!t) return;
+  lines.push(t.slice(0, 400));
+  follow();
+}
+function playDemo(id, gap) {
+  stopDemo();
+  lines = []; follow();
+  const script = DEMOS[id].slice();
+  $("demos").querySelectorAll("button").forEach(b => b.disabled = true);
+  const step = () => { if (!script.length) { stopDemo(); return; } addLine(script.shift()); };
+  step();
+  timer = setInterval(step, gap);
+}
+
+// ------------------------------------------------------------------ header: language and licence
+function paintPill() {
+  const [st, status] = pillState;
+  $("licPill").className = "pill" + (st === "ok" ? " ok" : st === "bad" ? " bad" : "");
+  $("licTxt").textContent = st === "ok" ? T("licOk") : st === "bad" ? (status === "expired" ? T("licExp") : status || T("licBad")) : "…";
+}
+async function pollLicence() {
+  try {
+    const b = await (await fetch("/license")).json();
+    const valid = b.valid === true || b.status === "valid";
+    pillState = [valid ? "ok" : "bad", b.status || ""];
+    paintPill();
+    $("lockBanner").className = valid ? "banner hidden" : "banner";
+    $("main").className = valid ? "" : "locked";
+    if (!valid) stopDemo();
+  } catch (e) {}
+}
+function paint() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-t]").forEach(e => { e.textContent = T(e.dataset.t); });
+  $("l-en").className = lang === "en" ? "on" : "";
+  $("l-hi").className = lang === "hi" ? "on" : "";
+  $("hiNote").className = lang === "hi" ? "note" : "note hidden";
+  const info = ScamMapShield.info();
+  if (info) {
+    const cv = info.cross_validation, h = info.heldout;
+    $("stats").textContent = T("stats", {n: cv.lines, a: (cv.step_accuracy * 100).toFixed(1), b: (cv.script_accuracy * 100).toFixed(1),
+                                         c: h.script_right, d: h.step_right, e: h.next_right, t: h.calls});
+  }
+  render();
+  paintPill();
+}
+function setLang(l) { lang = l; try { localStorage.setItem("lang", l); } catch (e) {} paint(); }
+$("l-en").onclick = () => setLang("en");
+$("l-hi").onclick = () => setLang("hi");
+$("demos").querySelectorAll("button").forEach(b => b.onclick = () => playDemo(b.dataset.demo, 1300));
+$("add").onclick = () => { stopDemo(); addLine($("line").value); $("line").value = ""; $("line").focus(); };
+$("line").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("add").click(); } });
+$("clear").onclick = () => { stopDemo(); lines = []; follow(); };
+window.ScamMapShieldPage = {playDemo, addLine, state: () => ({lines: lines.slice(), last, hits, predicted})};
+paint();
+ScamMapShield.load().then(ok => { if (ok) { paint(); follow(); } });
+pollLicence();
+setInterval(pollLicence, 5000);
+</script>
+</body>
+</html>

@@ -69,3 +69,13 @@ Decisions that took more than 10 minutes. Newest last.
 - Would change our mind: judges wanting new random data on every launch. Then we would add an optional seed.
 - Cost if wrong: a replayed plan shows a different outcome. Low: a test replays the cheapest plan.
 - Status: done on branch `arena`. Not merged; the Arena is first in the cut order.
+
+## 10. The AI showcase: an AI Call Shield that follows the caller's script
+- Question: 06:50 on 1 Nov. Tejas asked for one AI feature, in its own section, that no other team will have. Every team can classify a pasted message, and we already do. What is different and useful?
+- Options: a forecast of scam spikes (too little data to be honest); a graph that links numbers into campaigns (needs real data, and it would be another simulation); a call copilot that follows a scam script live.
+- Chosen: the call copilot. Scam calls (digital arrest above all) follow fixed scripts, so a model can say which step the caller is on and what comes next, before it comes. That is useful during the call itself, which no report, map or lookup can be. It is built from two small models we can explain: Naive Bayes per line, and a hidden Markov model over the script's steps. It runs on the phone, sends nothing, uses no LLM and never touches a verdict.
+- Changed after testing: the first version could not skip two steps, and one held-out call showed it. We added a small chance of a longer jump ahead, and wrote 3 new short calls before re-running (3 of 3). The README says the 9 earlier calls are no longer blind for that change.
+- Also decided: the menu gets a sixth item, "AI Shield". On phones the menu now shows two rows of three, so every label fits, Hindi included. The nav test was updated for the new item.
+- Would change our mind: judges finding the scripts unrealistic, or the demo call failing on the venue's devices.
+- Cost if wrong: an hour of build time before the freeze. The core product is untouched.
+- Status: done on branch `ai-shield`.

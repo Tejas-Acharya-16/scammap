@@ -48,9 +48,10 @@ def test_app_and_judge_console_share_one_header_and_theme(base_url, new_page, si
     assert app and judge, seen
     judge_label = "Judge" if size == "phone" else "Judge console"
     live_label = "Map" if size == "phone" else "Live map"
+    ai_label = "AI" if size == "phone" else "AI Shield"
     for got in (app, judge):
         assert got["brand"] == "Community Scam Map"
-        assert got["nav"] == ["Check", "Report", "My area", live_label, judge_label], got["nav"]
+        assert got["nav"] == ["Check", "Report", "My area", live_label, ai_label, judge_label], got["nav"]
         assert got["lang"] and got["pill"] and got["theme"], got
         assert not got["wide"], got
     assert app["accent"] == judge["accent"] == "#00C96B"
