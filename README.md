@@ -9,7 +9,8 @@ One website, two pages, one look:
 
 - **The app (`/`)**: Check, Report and My area, on a phone or a laptop. English and हिन्दी, icons for every choice, no login, no name, no phone number asked. On a laptop a side panel explains the trust rules and links to the judge console.
 - **The live scam map (`/live`)**: reports from the last 7 days by area on a street map, top scam types, live alerts and the most reported numbers (only ones 3+ independent people confirmed), refreshed every 10 seconds. Area centre points only; fake campaigns and repeat reports never appear.
-- **The judge console (`/judge`)**: one button runs every scoring check on a fresh sandbox copy of the engine (never the live data); read-only checks of the live API; the licence panel (upload `licenses/expired.json` to lock, `licenses/long.json` to unlock, no restart); a QR code that opens the app on your phone.
+- **The judge console (`/judge`)**: one button runs every scoring check, plus the AI watchdog checks, on a fresh sandbox copy of the engine (never the live data); read-only checks of the live API; the licence panel (upload `licenses/expired.json` to lock, `licenses/long.json` to unlock, no restart); a QR code that opens the app on your phone.
+- **AI watchdog**: every answer with 3+ reports carries an advisory AI opinion on whether the reports look coordinated, with its reasons. The rules decide; the AI never changes a verdict. See [The AI watchdog](#the-ai-watchdog-a-second-opinion-that-never-decides).
 - Security notes: [SECURITY.md](SECURITY.md). Libraries, services and AI tools: [DISCLOSURE.md](DISCLOSURE.md).
 
 ---
@@ -53,7 +54,7 @@ Or with Docker (app + Postgres):
 
 ```bash
 docker compose up --build
-# Server at http://localhost:8080 (docker-compose.yml maps port 8080 to the app)
+# Server at http://localhost:8000 (docker-compose.yml maps port 8000 to the app)
 ```
 
 ---
@@ -66,7 +67,8 @@ JSON in and out. Times are ISO 8601 with `+05:30`. Errors: `{"error": "<code>"}`
 |---|---|---|---|
 | `/health` | GET | `200 {"ok": true}` | — |
 | `/reports` | POST | `201 {"report_id", "case_id", "merged"}` | `400 {"error": "…"}` |
-| `/lookup?type=&value=` | GET | `200` (verdict object) | `400` for impossible values |
+| `/lookup?type=&value=` | GET | `200` (verdict object, plus a signed `attestation`: see [Signed answers](#signed-answers)) | `400` for impossible values |
+| `/attestation/key` | GET | `200 {"alg": "Ed25519", "key_id", "public_key"}` | — |
 | `/map?pincode=&days=7&radius_km=2` | GET | `200 {"clusters": [...]}` | `400` for malformed pincode |
 | `/alerts?pincode=` | GET | `200 {"alerts": [...]}` | `400` for malformed pincode |
 | `/admin/reset` | POST | `200 {"ok": true}` | — |
@@ -102,6 +104,61 @@ The system counts independent **voices**, not raw reports. A number is marked KN
 
 ---
 
+## The AI watchdog: a second opinion that never decides
+
+The rules above decide every verdict, so anyone can audit an answer. They are also fixed, and an attacker adapts. So every lookup with 3 or more reports also carries an **AI watchdog** opinion: how coordinated the reports look, from 0 to 1, a level (high from 0.8, medium from 0.5, else low), and up to 3 reasons in plain words. The app shows it under the answer in English or हिन्दी.
+
+```json
+"ai_watchdog": {"coordinated": 0.98, "level": "high",
+                "signals": ["filed together, but describing calls days apart",
+                            "a different area for every report", "reporters with no track record"],
+                "signal_codes": ["backdated+", "area_spread+", "new_share+"],
+                "model": "watchdog-v1", "advisory": true}
+```
+
+**What it is.** A logistic regression over 15 aggregate features of the stored reports (`app/engine/watchdog.py`), with its 15 weights in `app/data/watchdog_model.json`. Every feature points towards "coordinated", and training keeps every weight at zero or above, so no signal can count the wrong way: copied text can never make reports look more independent. It is not an LLM and calls nothing outside the server.
+
+**How it learned.** `python tools/train_watchdog.py` (standard library only, about 35 seconds) builds 120 synthetic worlds and plants 7,200 numbers in them, about half planted campaigns and half real waves. In each world, attackers choose each disguise separately: enough accounts or a few reused ones, aged accounts, one network or a proxy per report, patience over days, backdated calls, one area or a different area each, and pasted, reworded, canned, empty or original text. Real waves vary just as much: 3 to 50 people, over 1 hour to 2 weeks, in one area or anywhere, in their own words, with templates, with empty notes or with one example sentence. Both sides draw their size from the same range, so the number of reports says nothing, and the model never sees it.
+
+**Guardrails.**
+- It runs after the verdict, from stored reports only. A test and a judge-console check look up every number again with the watchdog switched off: the answers are identical apart from this one field.
+- It never sees a reporter's identity, a network, a note's words or a location finer than the area. It returns a number and phrases from a fixed list.
+- One shared filing stamp on every report (how bulk tools write test data) is not treated as backdating.
+- No model file means no opinion (`null`); the verdicts do not depend on it.
+
+**Results, in our simulator.** These are not real-world accuracy.
+
+| Test | Result |
+|---|---|
+| Held-out worlds (1,800 identifiers it never saw) | AUC 0.915; flags 81% of planted campaigns; wrongly flags 10% of real waves |
+| The gap it exists for: planted campaigns the rules confirmed anyway | 230 of 922 beat the rules; the watchdog flags 94 of them (41%) |
+| Real waves the rules confirmed | the watchdog wrongly flags 22 of 749 |
+| The 40 hand-written scenarios in the attack table (never trained on, 10 seeds) | flags 14 of 19 fake rows; 1 of 20 real rows (J6: 8 identical notes in 2 hours, which the rules also hold) |
+
+Its clearest catch is **backdating**: 12 accounts on 12 networks say the calls came over 5 days, but file all 12 reports within one hour. The rules see 12 people on different days and confirm the number. The watchdog says high (0.98): "filed together, but describing calls days apart". The judge console shows this as check AI3.
+
+**What it misses.** Friends who each write their own words and arrive together: in one area the rules stop them (rule 4) while the watchdog scores them only 0.2 to 0.3; when each picks a different area, neither layer stops them. Reports alone cannot tell them from a fast real wave.
+
+| Feature | Meaning | Weight |
+|---|---|---|
+| `backdated` | filed inside one hour, but describing calls spread wider | 1.40 |
+| `linked_share` | reports linked to another by the same reporter, network or copied text | 1.30 |
+| `area_top_share` | share from the busiest area | 0.71 |
+| `shared_net_share` | reports from a network another report already used | 0.68 |
+| `new_share` | voices with no track record | 0.63 |
+| `area_spread` | distinct areas per report | 0.58 |
+| `burst1_share` | most reports inside any one hour | 0.41 |
+| `dup_text_share` | reports whose exact text another reporter also sent | 0.31 |
+| `spread_x_burst` | a different area each, within one hour | 0.12 |
+| `empty_share` | reports with no words | 0.11 |
+| `burst6_share` | most reports inside any six hours | 0.00 |
+| `short_span` | all reports within a short time | 0.00 |
+| `dup_x_burst` | copied text, within six hours | 0.00 |
+| `empty_x_burst` | no words, within six hours | 0.00 |
+| `new_x_burst` | no track record, within one hour | 0.00 |
+
+---
+
 ## Known limits
 
 We say these out loud. In our tests:
@@ -111,12 +168,13 @@ We say these out loud. In our tests:
 - **A real local wave of 8 or more brand-new people in one area within 6 hours** waits as SUSPICIOUS until people from other areas, other days or with a track record confirm it.
 - **A small ring of 3 to 7** can still mark a number, and a ring can build a track record by first reporting numbers its members also report.
 - **People behind one network prefix within 24 hours** (a campus, carrier NAT, a family) count as one voice and add no weight.
+- **Backdated reports from many accounts and networks** (calls claimed over days, all filed within an hour) pass the rules. The AI watchdog flags them for review, but it never changes the verdict.
 
 ---
 
 ## AI in ScamMap
 
-ScamMap has one AI part, and it runs on the phone: a reader for a message the person pastes. It suggests which kind of scam the message looks like. **It never sets, raises or lowers a verdict.** Verdicts come only from the trust rules on the server, and the server runs no model.
+ScamMap has two AI parts, and both are advisory. This one runs on the phone: a reader for a message the person pastes. It suggests which kind of scam the message looks like. The other is the [AI watchdog](#the-ai-watchdog-a-second-opinion-that-never-decides) on the server. **Neither sets, raises or lowers a verdict.** Verdicts come only from the trust rules, and no LLM or outside model is called.
 
 - **What you see.** Paste a message into Check or Report. The app shows "AI reading of this message": the kind of scam it looks like, how sure it is, the 3 words that drove it, and red flags (pushes you to act fast, asks for money, mentions police, court or arrest, asks for an OTP, PIN or code, has a link, promises a prize, a job that asks for a deposit). It is labelled "AI suggestion, can be wrong", in English and Hindi.
 - **In Report** it pre-selects the kind of scam only when it is 0.7 sure or more and the person has not picked one. One tap on another tile changes it, and the reader does not change it back.
@@ -169,7 +227,7 @@ The server runs under a signed licence. An Ed25519 public key is built into the 
 - Data is never deleted on expiry. Uploading a valid licence restores full service instantly.
 - The web app polls `/license` every 10 seconds. When the licence expires, it shows "Licence expired. Contact your provider." When a valid licence is uploaded, the app recovers by itself.
 
-**Licence demo, no private key needed.** Run it from the repository folder. Set `URL` to `http://127.0.0.1:8000` locally, `http://localhost:8080` with Docker, or the live address. `licenses/expired.json` is a correctly signed licence whose date has passed; `licenses/long.json` runs to 31 Jan 2027.
+**Licence demo, no private key needed.** Run it from the repository folder. Set `URL` to `http://127.0.0.1:8000` locally, `http://localhost:8000` with Docker, or the live address. `licenses/expired.json` is a correctly signed licence whose date has passed; `licenses/long.json` runs to 31 Jan 2027.
 
 ```bash
 URL=http://127.0.0.1:8000
@@ -234,6 +292,35 @@ curl -X POST $URL/license -H 'content-type: application/json' --data @lic5.json
 
 ---
 
+## Signed answers
+
+Every `GET /lookup` answer carries one extra field, `attestation`: a signed copy of what this server said. A bank or insurer that pins our public key can later check that an answer came from this ScamMap server, and when. **It proves which server said what and when. It does not prove that the verdict is right.**
+
+- `GET /attestation/key` returns `{"alg": "Ed25519", "key_id", "public_key"}` (base64). It sits behind the licence gate like every API route, and so does `/lookup`: a server without a valid licence answers 403 and signs nothing.
+- The attestation is `{"v": 1, "key_id", "issued_at", "type", "value_sha256", "verdict", "voices", "report_count", "config", "sig"}`. `sig` is the Ed25519 signature over the canonical JSON (sorted keys, no spaces, UTF-8) of every other field. Changing, adding or removing any field breaks it. The other answer fields are unchanged.
+- `value_sha256` is the SHA-256 of the value's standard form (`+919876543210`), so every way of typing one number gives one hash. `voices` is `distinct_reporters`. `config` is the trust-rules hash, so an answer is tied to the rules that produced it. `issued_at` is this server's clock in IST.
+- No new secret: the key's seed is HMAC-SHA256(key=`TRUST_SALT`, msg=`scammap-attestation-v1`). The same `TRUST_SALT` gives the same key after every restart. `key_id` is the first 8 hex characters of SHA-256 of the public key. The seed is never stored, logged or returned.
+
+Check an answer (Python with PyNaCl, from the repository folder):
+
+```bash
+curl -s "$URL/attestation/key" > key.json            # pin this once, and keep its key_id
+curl -s "$URL/lookup?type=phone&value=%2B919000055501" > answer.json
+python tools/verify_attestation.py answer.json key.json --value "+91 90000 55501"
+# prints VALID (exit 0) or INVALID (exit 1)
+```
+
+On `/judge`, the "Verify an answer" panel does the same check in the browser with tweetnacl, and "Tamper" flips the verdict to show INVALID.
+
+Limits:
+- Anyone who holds `TRUST_SALT` can sign. It is already the secret that keys the reporter hashes. Changing it changes the key, and it also stops new reports from linking to older reports by the same reporter, so it is not a casual step.
+- `issued_at` is the server's own claim, not a third-party timestamp.
+- `value_sha256` does not hide a phone number: trying every number finds it. Treat an attestation like the number itself, and share it only with someone who already has the number.
+- A local run without `TRUST_SALT` uses a public default salt, so anyone can forge its answers. Pin only the live server's key.
+- Signing adds about 0.1 ms per lookup (p95, in process, in our bench): `python -m pytest tests/unit/test_attestation.py -k p95 -s`.
+
+---
+
 ## Privacy
 
 Security notes (what we protect, how, what is open by design, known limits): see [SECURITY.md](SECURITY.md).
@@ -275,14 +362,17 @@ All results below are from our own synthetic data and generators. They are not f
 ### Test commands
 
 ```bash
-# Engine tests (256 passed, 2 known limits)
+# Engine tests (283 passed, 2 known limits)
 python -m pytest tests/engine -q
 
-# Everything except the browser tests (307 passed, 2 known limits)
+# Everything except the browser tests (373 passed, 2 known limits)
 python -m pytest tests -q --ignore=tests/e2e
 
-# Browser tests at phone size (25 passed; first run: python -m playwright install chromium)
+# Browser tests, phone and laptop size (38 passed; first run: python -m playwright install chromium)
 python -m pytest tests/e2e -q
+
+# Paste-anything: the extractor and a phone flow (Node 22, uses the Python Playwright above; 3 passed)
+PYTHON=python node --test tests/extract.test.cjs tests/e2e/paste-anything.test.cjs
 
 # In-process attack table (60 seeds, ~20 seconds)
 python -m tests.engine.scenarios --seeds 60 --compare

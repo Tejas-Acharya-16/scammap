@@ -13,7 +13,7 @@ or earlier hackathons.
 | SQLAlchemy | Database access (SQLite locally, PostgreSQL on the server) | MIT |
 | psycopg 3 | PostgreSQL driver | LGPL-3.0 |
 | Pydantic | Request models | MIT |
-| PyNaCl | Ed25519 check of the licence signature | Apache-2.0 |
+| PyNaCl | Ed25519 check of the licence signature; signing lookup answers (`app/attestation.py`) | Apache-2.0 |
 | httpx | Test client | BSD-3-Clause |
 | pytest | Tests | MIT |
 
@@ -27,6 +27,7 @@ or earlier hackathons.
 
 - qrcodejs 1.0.0, loaded from cdnjs, draws the QR code on the judge console (`/judge`). The page works without it.
 - Leaflet 1.9.4 (BSD-2-Clause), loaded from cdnjs, draws the live scam map (`/live`). Map tiles come from the OpenStreetMap Foundation's tile server (tile.openstreetmap.org, no API key; used under its tile usage policy), with OpenStreetMap data (© OpenStreetMap contributors, ODbL), and are credited on the map. The viewer's browser fetches the tiles; no report data is sent to them. Without them the page falls back to a plain plot of area centres.
+- tweetnacl 1.0.3 (public domain, Unlicense), loaded from cdnjs with a pinned integrity hash, checks signed answers in the "Verify an answer" panel on `/judge`. Without it the panel says NOT CHECKED, and `tools/verify_attestation.py` does the same check. A byte-identical copy is in `tests/e2e/assets` so the browser tests run without a network.
 - No web fonts: the pages use the device's system fonts (Inter where the device already has it). Both pages share one stylesheet, `app/static/theme.css`, written for this project.
 - The map pin in the header is drawn in CSS. No logo, image or asset from any other site or company is used.
 - Icons are Unicode emoji, drawn by the device's own emoji font. No icon pack and no third-party logos.
@@ -53,13 +54,19 @@ or earlier hackathons.
 ## AI tools
 
 They helped us write code, tests and documents. None of them runs inside the product: every verdict comes
-from deterministic code, and no model is called while the server answers a request. The product has one model
-of its own, the on-device message reader (see Data): it runs in the browser, only suggests a kind of scam,
-and never sets a verdict.
+from deterministic code, and no outside model is called while the server answers a request.
+
+The product has two small models of its own, both written and trained during the event on synthetic data
+only, and both advisory: neither sets, raises or lowers a verdict, and neither is an LLM.
+
+- The **AI watchdog** (`app/engine/watchdog.py`, on the server): a logistic regression with 15 weights
+  (`app/data/watchdog_model.json`), trained with `tools/train_watchdog.py` on our own attack simulator, with
+  the Python standard library. It adds an opinion on whether a number's reports look coordinated.
+- The **on-device message reader** (see Data): it runs in the browser and only suggests a kind of scam.
 
 | Tool | What it helped with |
 |---|---|
-| Claude (claude.ai chat, Anthropic) | Planning, the trust engine and its tests (`app/engine`, `tests/engine`), the judge console sandbox, reviews, the security review |
+| Claude (claude.ai chat, Anthropic) | Planning, the trust engine and its tests (`app/engine`, `tests/engine`), the judge console sandbox, the AI watchdog (model code, attack simulator, training script), reviews, the security review |
 | Claude Code (Anthropic) | Server, licence, deployment, CI, web app changes, Playwright tests, the on-device message reader and its synthetic messages |
 | Google Antigravity (with the Claude and Gemini models it offers) | README, Docker files, the demo seed script, the video script |
 | OpenAI Codex | Black-box tests: live attack table, live lookup and privacy checks, input variants |
