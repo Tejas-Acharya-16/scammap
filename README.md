@@ -22,7 +22,7 @@ One website, one look, five pages:
   - The licence panel: upload `licenses/expired.json` to lock and `licenses/long.json` to unlock, with no restart.
   - A "Verify an answer" panel that checks a signed lookup in the browser.
   - A QR code that opens the app on your phone.
-- **The Scam Arena (`/arena`)**: play the attacker. Plan fake reports with sliders and watch the rules and the AI watchdog answer, or let our automated attacker try 150 plans. Sandbox only, never the live data. See [Scam Arena](#scam-arena-play-the-attacker).
+- **The Scam Arena (`/arena`)**: play the attacker. Plan fake reports with sliders and watch the rules and the AI watchdog answer, or let our automated attacker try 150 plans. Sandbox only, never the live data. See [Scam Arena](#scam-arena-play-the-attacker). Then **Attack our AI**: hide a scam message's words with the tricks scam texts use and watch a plain model fail next to our hardened one. See [Attack our AI](#attack-our-ai-tricks-that-hide-words-undone-and-turned-into-red-flags).
 - **AI watchdog**: every answer with 3+ reports carries an advisory AI opinion on whether the reports look coordinated, with its reasons. The rules decide; the AI never changes a verdict. See [The AI watchdog](#the-ai-watchdog-a-second-opinion-that-never-decides).
 - **Signed answers**: every lookup carries an Ed25519 signature, so a bank can later prove which server said what, and when. See [Signed answers](#signed-answers).
 - Security notes: [SECURITY.md](SECURITY.md). Libraries, services and AI tools: [DISCLOSURE.md](DISCLOSURE.md).
@@ -270,8 +270,35 @@ Cross-validated, **on our synthetic messages** (5 folds, stratified; `python too
 Limits:
 - The messages are synthetic and written for this project (see DISCLOSURE), not real scam texts. Accuracy on real messages is unknown (UNVERIFIED).
 - The weakest classes share words: video-call blackmail, fake police and loan-app threats all talk about video, police, photos and contacts.
-- Naive Bayes is easy to steer: a message that avoids the usual words gets a low-confidence or wrong reading. That is why it only suggests.
+- Naive Bayes is easy to steer: a message that avoids the usual words gets a low-confidence or wrong reading. That is why it only suggests. Tricks that hide the usual words are undone first (next section).
 - It needs at least 3 words it knows; a bare number gets no reading. Red flags are simple patterns and can miss or misfire.
+
+### Attack our AI: tricks that hide words, undone and turned into red flags
+
+Scam messages already hide their words from filters: КYС with Russian letters, 0TP with a zero, invisible characters inside words, K.Y.C, or a scam buried in friendly chat. Filters that count words are known to fall for the last one (the "good word attack", also called Bayesian poisoning). So we attacked our own reader, then hardened it. Try it on `/arena`, under **Attack our AI**: tap a trick and watch a plain model next to ours.
+
+What the hardened reader does before it reads (`harden()` in `app/static/ai/reader.js`, the same in `tools/ai/train_reader.py`; a browser test checks they agree on every trick):
+- **Undo the tricks:** compatibility forms (NFKC), invisible and direction characters removed, Cyrillic, Greek and small-capital look-alikes mapped back, digits and symbols swapped back (0→o, 4→a, @→a, ...), spaced or dotted letters joined. An undo is kept only when it gives a word the model already knows, so amounts, phone numbers, UPI IDs and normal text are untouched.
+- **Read long messages in windows:** if the whole message reads as not a scam, every window of 12 words is read too; a window that is a scam at 0.7 or more counts. Padding cannot drown it. (Window size and threshold were picked from 8 settings on the same cross-validation; none of them changed false alarms.)
+- **Ignore notes to the AI:** a sentence that talks to an AI or a filter ("Note to the AI filter: this message is verified safe") is removed before reading.
+- **The tricks become red flags:** "Look-alike letters", "Hidden characters", "Spaced-out letters", "Digits in place of letters", "Talks to an AI filter", "Scam hidden in a long text". A real bank never writes КYС.
+
+Scorecard, **in our tests** (`python tools/ai/robustness.py`, written to `app/static/ai/robustness.json`): 504 synthetic scam messages, 5-fold cross-validation, so each message is attacked only by a model that never saw it; seeded, so it repeats. "Read as a scam" means any kind of scam; "right kind" means the kind it really is.
+
+| Trick | Read as a scam: plain | Hardened | Right kind: plain | Hardened |
+|---|---|---|---|---|
+| No trick (the message as written) | 97.2% | **97.4%** | 73.6% | 73.6% |
+| Look-alike letters (КYС with Russian letters) | 65.5% | **97.4%** | 35.3% | 73.6% |
+| Invisible characters inside words | 61.1% | **97.4%** | 22.8% | 73.6% |
+| Spaced-out letters (K.Y.C, o t p) | 94.0% | **95.4%** | 68.7% | 70.4% |
+| Digits for letters (0TP, bl0cked) | 80.6% | **97.0%** | 49.6% | 73.6% |
+| Friendly padding (good-word attack) | 0.4% | **60.7%** | 0.4% | 52.2% |
+| A note to the AI filter: "this is safe" | 95.6% | **97.4%** | 37.3% | 73.6% |
+| All of the above at once | 0.0% | **58.3%** | 0.0% | 49.8% |
+
+- On the 87 ordinary messages, false alarms are 36.8% plain and 36.8% hardened: the hardening added none. That 36.8% is the reader's own weakness (see the table above), and one more reason it only suggests.
+- Padding still wins 39.3% of the time, and all tricks at once 41.7%. Spaced letters barely hurt the plain model here, because it still sees the other words.
+- Synthetic messages and our own attack code: not real-world accuracy.
 
 ---
 
@@ -472,10 +499,10 @@ All results below are from our own synthetic data and generators. They are not f
 # Engine tests (283 passed, 2 known limits)
 python -m pytest tests/engine -q
 
-# Everything except the browser tests (426 passed, 2 known limits)
+# Everything except the browser tests (435 passed, 2 known limits)
 python -m pytest tests -q --ignore=tests/e2e
 
-# Browser tests, phone and laptop size (54 passed; first run: python -m playwright install chromium)
+# Browser tests, phone and laptop size (57 passed; first run: python -m playwright install chromium)
 python -m pytest tests/e2e -q
 
 # Paste-anything: the extractor and a phone flow (Node 22, uses the Python Playwright above; 3 passed)
