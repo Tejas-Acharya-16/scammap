@@ -2,15 +2,27 @@
 
 Report and verify scams in seconds, anonymously.
 
-**Live:** <https://scammap-yp1k.onrender.com> (opens on Report; <https://scammap-yp1k.onrender.com/#check> opens Check)
-**Judge console:** <https://scammap-yp1k.onrender.com/judge>
+- **Live app:** <https://scammap-yp1k.onrender.com> (opens on Report; <https://scammap-yp1k.onrender.com/#check> opens Check)
+- **Live scam map:** <https://scammap-yp1k.onrender.com/live>
+- **Judge console:** <https://scammap-yp1k.onrender.com/judge>
+- **Scam Arena:** <https://scammap-yp1k.onrender.com/arena>
 
-One website, two pages, one look:
+One website, one look, four pages:
 
 - **The app (`/`)**: Check, Report and My area, on a phone or a laptop. English and हिन्दी, icons for every choice, no login, no name, no phone number asked. On a laptop a side panel explains the trust rules and links to the judge console.
+  - **Paste anything.** Paste a whole SMS or WhatsApp message and the app picks out the number, UPI ID, link or sender itself, on the phone.
+  - **On-device AI reading.** An AI on the phone reads the pasted message and suggests the kind of scam, labelled "AI suggestion, can be wrong". The message never leaves the phone. See [AI in ScamMap](#ai-in-scammap).
+  - **Ask family before you pay.** A Check result that is Known scam or Suspicious offers this button. It opens WhatsApp with a ready message the person can send to family; nothing is sent unless they send it.
 - **The live scam map (`/live`)**: reports from the last 7 days by area on a street map, top scam types, live alerts and the most reported numbers (only ones 3+ independent people confirmed), refreshed every 10 seconds. Area centre points only; fake campaigns and repeat reports never appear.
-- **The judge console (`/judge`)**: one button runs every scoring check, plus the AI watchdog checks, on a fresh sandbox copy of the engine (never the live data); read-only checks of the live API; the licence panel (upload `licenses/expired.json` to lock, `licenses/long.json` to unlock, no restart); a QR code that opens the app on your phone.
+- **The judge console (`/judge`)**:
+  - One button runs every scoring check, plus the AI watchdog checks, on a fresh sandbox copy of the engine (never the live data).
+  - Read-only checks of the live API.
+  - The licence panel: upload `licenses/expired.json` to lock and `licenses/long.json` to unlock, with no restart.
+  - A "Verify an answer" panel that checks a signed lookup in the browser.
+  - A QR code that opens the app on your phone.
+- **The Scam Arena (`/arena`)**: play the attacker. Plan fake reports with sliders and watch the rules and the AI watchdog answer, or let our automated attacker try 150 plans. Sandbox only, never the live data. See [Scam Arena](#scam-arena-play-the-attacker).
 - **AI watchdog**: every answer with 3+ reports carries an advisory AI opinion on whether the reports look coordinated, with its reasons. The rules decide; the AI never changes a verdict. See [The AI watchdog](#the-ai-watchdog-a-second-opinion-that-never-decides).
+- **Signed answers**: every lookup carries an Ed25519 signature, so a bank can later prove which server said what, and when. See [Signed answers](#signed-answers).
 - Security notes: [SECURITY.md](SECURITY.md). Libraries, services and AI tools: [DISCLOSURE.md](DISCLOSURE.md).
 
 ---
@@ -42,12 +54,12 @@ The server uses SQLite by default. On a fresh database it installs the licence i
 
 ```bash
 curl http://127.0.0.1:8000/health                                     # {"ok":true}
-curl "http://127.0.0.1:8000/lookup?type=phone&value=%2B919876543210"  # 200, verdict NO_REPORTS
+curl "http://127.0.0.1:8000/lookup?type=phone&value=%2B919000012345"  # 200, verdict NO_REPORTS
 ```
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8000/health
-Invoke-RestMethod "http://127.0.0.1:8000/lookup?type=phone&value=%2B919876543210"
+Invoke-RestMethod "http://127.0.0.1:8000/lookup?type=phone&value=%2B919000012345"
 ```
 
 Or with Docker (app + Postgres):
@@ -75,8 +87,14 @@ JSON in and out. Times are ISO 8601 with `+05:30`. Errors: `{"error": "<code>"}`
 | `/challenges` | POST | `201 {"challenge_id", "status": "under_review"}` | `400` |
 | `/license` | GET | `200` (licence status) | — |
 | `/license` | POST | `200` (installed licence) | `400 {"error": "INVALID_LICENSE"}` |
+| `/live/summary?days=7` | GET | `200` (areas, top scam types, most reported numbers and alerts for the live map) | — |
+| `/demo/run` | POST | `200` (the judge console's sandbox checks) | `429 {"error": "busy"}` |
+| `/arena/attack` | POST | `200` (one sandbox attack: see [Scam Arena](#scam-arena-play-the-attacker)) | `400 {"error": "invalid_params"}`, `429` |
+| `/arena/redteam` | POST | `200` (our automated attacker, sandbox only) | `400 {"error": "invalid_params"}`, `429` |
 
-When the licence is not valid, every route except `/health`, `/license` and static files returns `403 {"error": "LICENSE_EXPIRED"}`.
+The last four routes are our own additions. The organisers' routes above them are unchanged.
+
+When the licence is not valid, every route except `/health`, `/license`, the pages (`/`, `/live`, `/judge`, `/arena`) and static files returns `403 {"error": "LICENSE_EXPIRED"}`.
 
 Unknown routes return `404 {"error": "not_found"}`. Wrong method returns `405 {"error": "method_not_allowed"}`. Error messages never echo user input.
 
@@ -174,7 +192,7 @@ We say these out loud. In our tests:
 
 ## AI in ScamMap
 
-ScamMap has two AI parts, and both are advisory. This one runs on the phone: a reader for a message the person pastes. It suggests which kind of scam the message looks like. The other is the [AI watchdog](#the-ai-watchdog-a-second-opinion-that-never-decides) on the server. **Neither sets, raises or lowers a verdict.** Verdicts come only from the trust rules, and no LLM or outside model is called.
+ScamMap has two AI parts, and both are advisory. This one runs on the phone: a reader for a message the person pastes. It suggests which kind of scam the message looks like. The other is the [AI watchdog](#the-ai-watchdog-a-second-opinion-that-never-decides) on the server. **Neither sets, raises or lowers a verdict.** Verdicts come only from the trust rules, and no LLM or outside model is called. The Scam Arena's "Let our AI attack" is an automated attacker that searches attack plans at random. It is not a model, and it runs only in the sandbox.
 
 - **What you see.** Paste a message into Check or Report. The app shows "AI reading of this message": the kind of scam it looks like, how sure it is, the 3 words that drove it, and red flags (pushes you to act fast, asks for money, mentions police, court or arrest, asks for an OTP, PIN or code, has a link, promises a prize, a job that asks for a deposit). It is labelled "AI suggestion, can be wrong", in English and Hindi.
 - **In Report** it pre-selects the kind of scam only when it is 0.7 sure or more and the person has not picked one. One tap on another tile changes it, and the reader does not change it back.
@@ -346,7 +364,7 @@ Every `GET /lookup` answer carries one extra field, `attestation`: a signed copy
 
 - `GET /attestation/key` returns `{"alg": "Ed25519", "key_id", "public_key"}` (base64). It sits behind the licence gate like every API route, and so does `/lookup`: a server without a valid licence answers 403 and signs nothing.
 - The attestation is `{"v": 1, "key_id", "issued_at", "type", "value_sha256", "verdict", "voices", "report_count", "config", "sig"}`. `sig` is the Ed25519 signature over the canonical JSON (sorted keys, no spaces, UTF-8) of every other field. Changing, adding or removing any field breaks it. The other answer fields are unchanged.
-- `value_sha256` is the SHA-256 of the value's standard form (`+919876543210`), so every way of typing one number gives one hash. `voices` is `distinct_reporters`. `config` is the trust-rules hash, so an answer is tied to the rules that produced it. `issued_at` is this server's clock in IST.
+- `value_sha256` is the SHA-256 of the value's standard form (`+919000055501`), so every way of typing one number gives one hash. `voices` is `distinct_reporters`. `config` is the trust-rules hash, so an answer is tied to the rules that produced it. `issued_at` is this server's clock in IST.
 - No new secret: the key's seed is HMAC-SHA256(key=`TRUST_SALT`, msg=`scammap-attestation-v1`). The same `TRUST_SALT` gives the same key after every restart. `key_id` is the first 8 hex characters of SHA-256 of the public key. The seed is never stored, logged or returned.
 
 Check an answer (Python with PyNaCl, from the repository folder):
@@ -385,7 +403,7 @@ Reporter name, phone number, email, exact location or coordinates, raw IP addres
 
 ### Display rules
 
-A value is shown in full only after 3 different voices report it and it is not under dispute. Below that threshold, values are masked (e.g. `98XXXXX210`).
+A value is shown in full only after 3 different voices report it and it is not under dispute. Below that threshold, values are masked (e.g. `90XXXXX501`).
 
 ### Logging
 
@@ -401,7 +419,7 @@ All results below are from our own synthetic data and generators. They are not f
 
 | What | Result | Output |
 |---|---|---|
-| Attack scenarios over HTTP (engine v1.2, commit `d141030`, 31 Oct 21:48 IST) | 1,677 reports, 0 rejected, 0 failures, 2 known limits | [tests/attack/LIVE_ATTACK_TABLE.txt](tests/attack/LIVE_ATTACK_TABLE.txt) |
+| Attack scenarios over HTTP (engine v1.3, commit `f711f81`, 1 Nov 02:42 IST, 1 seed) | 834 reports, 0 rejected, 0 failures; 31 of 32 scenarios as wanted, 1 known limit (friends who each pick another area) | [tests/attack/LIVE_ATTACK_TABLE.txt](tests/attack/LIVE_ATTACK_TABLE.txt) |
 | Lookup formats and speed (31 Oct 23:17 IST) | 4 ways of writing one number give one answer; p95 216 ms on new connections, 107 ms on a kept-open connection, from our laptop | [tests/api/LIVE_LOOKUP_CHECK.txt](tests/api/LIVE_LOOKUP_CHECK.txt) |
 | Privacy canaries (31 Oct 23:21 IST) | No canary value in any reply; the number stays masked | [tests/privacy/LIVE_PRIVACY_CHECK.txt](tests/privacy/LIVE_PRIVACY_CHECK.txt) |
 | Bulk upload, 2,000 reports, 16 connections, no retries (1 Nov 01:55 IST) | 2,000 accepted, 0 × 429, 0 × 5xx, 0 timeouts; lookups during the upload p95 582 ms on the free instance | [tests/api/LIVE_BULK_LOAD.txt](tests/api/LIVE_BULK_LOAD.txt) |
@@ -413,10 +431,10 @@ All results below are from our own synthetic data and generators. They are not f
 # Engine tests (283 passed, 2 known limits)
 python -m pytest tests/engine -q
 
-# Everything except the browser tests (373 passed, 2 known limits)
+# Everything except the browser tests (417 passed, 2 known limits)
 python -m pytest tests -q --ignore=tests/e2e
 
-# Browser tests, phone and laptop size (38 passed; first run: python -m playwright install chromium)
+# Browser tests, phone and laptop size (48 passed; first run: python -m playwright install chromium)
 python -m pytest tests/e2e -q
 
 # Paste-anything: the extractor and a phone flow (Node 22, uses the Python Playwright above; 3 passed)
