@@ -26,7 +26,6 @@ from .demo import SYL, Sandbox
 from .engine import IST, KNOWN_SCAM, SUSPICIOUS, VERIFIED_BUSINESS, normalise
 
 H = timedelta(hours=1)
-D = timedelta(days=1)
 
 KEYS = ("target", "reports", "accounts", "networks", "areas", "hours", "words", "backdate")
 TARGETS = ("verified", "unlisted")
