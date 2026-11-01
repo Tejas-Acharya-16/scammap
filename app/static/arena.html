@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scam Arena · Community Scam Map</title>
+<link rel="stylesheet" href="/static/theme.css">
+<style>
+/* The Scam Arena's own layout. The shared look (colours, header, cards, buttons) is in /static/theme.css.
+   The result is a dark evidence panel, as for the licence row on /judge. */
+body{font-size:15px}
+main{max-width:1240px;margin:0 auto;padding:16px 16px 56px}
+h2{font-size:17px;margin:0 0 10px;letter-spacing:-.01em}
+p{margin:6px 0}
+.hero{padding:20px}
+.hero h1{margin:10px 0 8px;font-size:27px;line-height:1.12;font-weight:650;letter-spacing:-.025em}
+.hero>p{max-width:860px;color:var(--ink-2)}
+.note{background:var(--amber-soft);border:1px solid var(--amber-line);border-radius:12px;padding:10px 12px;font-size:13px;margin-top:8px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+@media (min-width:900px){main{padding:28px 24px 64px}.hero{padding:28px 30px}.hero h1{font-size:36px}.grid{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr)}}
+.lbl{display:block;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}
+html[lang="hi"] .lbl{letter-spacing:.02em;font-family:var(--font);font-size:12.5px}
+.presets,.seg{display:flex;flex-wrap:wrap;gap:6px}
+.presets button,.seg button{border:1px solid var(--line-2);background:var(--surface);border-radius:var(--pill);padding:7px 12px;font-size:13.5px;color:var(--ink-2);cursor:pointer;max-width:100%;text-align:left}
+.seg button.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-text);font-weight:600}
+.slider{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center;margin-top:10px}
+.slider label{font-size:14px;font-weight:600;min-width:0}
+.slider output{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent-text)}
+.slider input{grid-column:1/-1;width:100%;margin:4px 0 0;accent-color:var(--accent)}
+.check{display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-size:14px}
+.check input{width:20px;height:20px;margin:1px 0 0;flex:none;accent-color:var(--accent)}
+#launch{width:100%;margin-top:16px}
+.banner{background:var(--warn);color:#fff;padding:10px 24px;font-weight:600;text-align:center}
+/* the dark evidence panel */
+.dark{--green:#3DDC8B;--warn:#FF8B7A;background-color:var(--night);color:var(--night-ink);border-color:var(--night-2);background-size:28px 28px;
+  background-image:linear-gradient(var(--night-line) 1px,transparent 1px),linear-gradient(90deg,var(--night-line) 1px,transparent 1px)}
+.dark h3{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:16px 0 6px}
+html[lang="hi"] .dark h3{letter-spacing:.02em;font-family:var(--font);font-size:12.5px}
+.dark .muted{color:var(--night-muted)}
+.dark code,.dark .mono{color:#fff}
+#banner{font-family:var(--mono);font-weight:800;font-size:22px;line-height:1.2;letter-spacing:.02em;padding:14px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.18);overflow-wrap:anywhere}
+html[lang="hi"] #banner{font-family:var(--font);letter-spacing:0}
+#banner.idle{color:var(--night-muted);font-size:16px;font-weight:600}
+#banner.caught{color:var(--green);border-color:var(--green);background:rgba(61,220,139,.08)}
+#banner.flagged{color:var(--gold);border-color:var(--gold);background:rgba(228,168,82,.1)}
+#banner.both{color:var(--warn);border-color:var(--warn);background:rgba(255,139,122,.1)}
+.sand{display:inline-block;margin-top:8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);border:1px solid rgba(228,168,82,.55);border-radius:var(--pill);padding:2px 9px}
+html[lang="hi"] .sand{letter-spacing:.02em}
+.count{font-size:18px;font-weight:700;margin:12px 0 4px;overflow-wrap:anywhere}
+.count .v{font-size:12px;vertical-align:middle}
+ul.plain{margin:0;padding-left:18px}
+ul.plain li{margin:3px 0;overflow-wrap:anywhere}
+.ai{border:1px dashed rgba(228,168,82,.6);border-radius:12px;padding:10px 12px;margin-top:6px}
+dl.bill{display:grid;grid-template-columns:auto minmax(0,1fr);gap:5px 14px;margin:4px 0 0}
+dl.bill dt{color:var(--night-muted);font-size:13px}
+dl.bill dd{margin:0;font-family:var(--mono);font-weight:700;color:#fff}
+#note{margin-top:14px;font-size:14px;overflow-wrap:anywhere}
+.red-sum{font-weight:700;margin:12px 0 6px}
+.plan{border-top:1px solid var(--line);padding:10px 0;display:grid;gap:6px}
+.plan .mono{font-size:12.5px;overflow-wrap:anywhere}
+.plan .load{justify-self:start;min-height:38px;padding:7px 14px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="strip"><div class="in"><b data-t="stripA">Anonymous by design</b> <span data-t="stripB">· no login, no name, no phone number asked</span></div></div>
+<header class="site"><div class="in">
+  <a class="brand" href="/" aria-label="Community Scam Map"><span class="mk" aria-hidden="true"></span><span class="wm"><b>Community <span>Scam Map</span></b><small data-t="tag">Report · check · anonymous</small></span></a>
+  <nav class="sitenav" aria-label="Main"><a href="/#check" data-t="tCheck">Check</a><a href="/#report" data-t="tReport">Report</a><a href="/#area" data-t="tArea">My area</a><a class="nl" href="/live"><span class="lg" data-t="tLive">Live map</span><span class="sm" data-t="tLiveS">Map</span></a><a class="nj on" href="/judge"><span class="lg" data-t="tJudge">Judge console</span><span class="sm" data-t="tJudgeS">Judge</span></a></nav>
+  <div class="tools"><span id="licPill" class="pill" role="status"><i></i><span class="pl-w" data-t="licW">Licence</span><span id="licTxt">…</span></span><span class="lang"><button id="l-en" class="on">EN</button><button id="l-hi">हिन्दी</button></span></div>
+</div></header>
+<div id="lockBanner" class="banner hidden">Licence expired: every API route now answers 403 {"error":"LICENSE_EXPIRED"}. Upload a valid licence file on the judge console (Row 5).</div>
+<main>
+  <section class="card hero">
+    <p class="eyebrow" data-t="eyebrow">Scam Arena</p>
+    <h1 data-t="h1">Play the attacker</h1>
+    <p data-t="intro">Plan fake reports against a number, launch them, and watch the trust rules and the AI watchdog answer. Every attack runs in a sandbox: a fresh copy of the same engine and rules as this server, never the live data.</p>
+    <p id="hiNote" class="note hidden" lang="hi">नियमों और AI के कारण वाले वाक्य सर्वर से अंग्रेज़ी में आते हैं।</p>
+  </section>
+  <div class="grid">
+    <section class="card" id="plan">
+      <h2 data-t="hPlan">Your attack</h2>
+      <span class="lbl" data-t="lPresets">Presets</span>
+      <div id="presets" class="presets"></div>
+      <span class="lbl" data-t="lTarget">Target</span>
+      <div class="seg" id="target"><button data-v="verified" data-t="tVerified">A verified business</button><button data-v="unlisted" class="on" data-t="tUnlisted">An unlisted number</button></div>
+      <div class="slider"><label for="s-reports" data-t="sReports">Reports</label><output id="o-reports"></output><input type="range" id="s-reports" min="3" max="60" value="40"></div>
+      <div class="slider"><label for="s-accounts" data-t="sAccounts">Fake accounts</label><output id="o-accounts"></output><input type="range" id="s-accounts" min="1" max="40" value="40"></div>
+      <div class="slider"><label for="s-networks" data-t="sNetworks">Networks</label><output id="o-networks"></output><input type="range" id="s-networks" min="1" max="40" value="40"></div>
+      <div class="slider"><label for="s-areas" data-t="sAreas">Areas</label><output id="o-areas"></output><input type="range" id="s-areas" min="1" max="12" value="1"></div>
+      <div class="slider"><label for="s-hours" data-t="sHours">Calls spread over</label><output id="o-hours"></output><input type="range" id="s-hours" min="0" max="11" value="2"></div>
+      <span class="lbl" data-t="lWords">Notes</span>
+      <div class="seg" id="words"><button data-v="copy" data-t="wCopy">Copy-paste</button><button data-v="reword" data-t="wReword">Reworded</button><button data-v="own" class="on" data-t="wOwn">Own words</button><button data-v="empty" data-t="wEmpty">Empty</button></div>
+      <label class="check"><input type="checkbox" id="backdate"><span data-t="backdate">Backdate: claim the calls came over 5 days, but file every report within the time above</span></label>
+      <button id="launch" class="btn" data-t="launch">Launch attack</button>
+    </section>
+    <section class="card dark" id="result" aria-live="polite">
+      <div id="banner" class="idle" data-t="ready">Pick a preset or move the sliders, then launch.</div>
+      <span class="sand" data-t="sandbox">in this sandbox</span>
+      <div id="details"></div>
+    </section>
+  </div>
+  <section class="card" id="red">
+    <h2 data-t="hRed">Let our AI attack</h2>
+    <p class="muted" data-t="redIntro">Our automated attacker runs a random search: 150 plans with the same sliders, in a sandbox, for at most 4 seconds. It shows the cheapest plan that beat the rules, and the cheapest that beat both layers.</p>
+    <button id="redteam" class="btn alt" data-t="redBtn">Let our AI attack</button>
+    <div id="redOut"></div>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const HOURS = [0.25, 0.5, 1, 2, 3, 6, 12, 24, 48, 72, 120, 168];
+const PRESETS = [
+  ["p1", {target: "verified", reports: 40, accounts: 40, networks: 40, areas: 1, hours: 1, words: "own", backdate: false}],
+  ["p2", {target: "unlisted", reports: 22, accounts: 22, networks: 1, areas: 1, hours: 3, words: "own", backdate: false}],
+  ["p3", {target: "unlisted", reports: 6, accounts: 1, networks: 6, areas: 1, hours: 1, words: "own", backdate: false}],
+  ["p4", {target: "unlisted", reports: 40, accounts: 40, networks: 40, areas: 1, hours: 1, words: "copy", backdate: false}],
+  ["p5", {target: "unlisted", reports: 12, accounts: 12, networks: 12, areas: 6, hours: 1, words: "own", backdate: true}],
+  ["p6", {target: "unlisted", reports: 11, accounts: 11, networks: 11, areas: 11, hours: 1, words: "own", backdate: false}],
+];
+const L = {
+  en: {tag: "Report · check · anonymous", tCheck: "Check", tReport: "Report", tArea: "My area", tJudge: "Judge console", tJudgeS: "Judge", tLive: "Live map", tLiveS: "Map",
+       stripA: "Anonymous by design", stripB: "· no login, no name, no phone number asked", licW: "Licence", licOk: "valid", licExp: "expired", licBad: "not valid",
+       eyebrow: "Scam Arena", h1: "Play the attacker",
+       intro: "Plan fake reports against a number, launch them, and watch the trust rules and the AI watchdog answer. Every attack runs in a sandbox: a fresh copy of the same engine and rules as this server, never the live data.",
+       hPlan: "Your attack", lPresets: "Presets", lTarget: "Target", tVerified: "A verified business", tUnlisted: "An unlisted number",
+       sReports: "Reports", sAccounts: "Fake accounts", sNetworks: "Networks", sAreas: "Areas", sHours: "Calls spread over",
+       lWords: "Notes", wCopy: "Copy-paste", wReword: "Reworded", wOwn: "Own words", wEmpty: "Empty",
+       backdate: "Backdate: claim the calls came over 5 days, but file every report within the time above",
+       launch: "Launch attack", launching: "Attacking…", ready: "Pick a preset or move the sliders, then launch.", sandbox: "in this sandbox",
+       p1: "40 friends vs the bakery", p2: "22 accounts on one Wi-Fi", p3: "One person x 6", p4: "Pasted message x 40", p5: "Backdated ring", p6: "1 + 10 friends in 11 areas",
+       caught: "CAUGHT", flagged: "YOU BEAT THE RULES, AI FLAGGED IT", both: "YOU BEAT BOTH",
+       reports: "reports", voices: "voices", rulesH: "What linked the reports", noRules: "No rule linked these reports.",
+       aiH: "AI watchdog (advisory)", aiNone: "No opinion (fewer than 3 reports or no model).", coord: "coordinated", aiNever: "It never changes the verdict.",
+       alertsH: "Alerts raised", none: "none", mapH: "Map moved", mapTxt: "counted reports added to the 7-day map", billH: "Attack bill",
+       bAcc: "Fake accounts", bNet: "Networks", bAreas: "Areas", bHours: "Hours", bPeople: "People needed",
+       hRed: "Let our AI attack", redBtn: "Let our AI attack", redBusy: "Searching…",
+       redIntro: "Our automated attacker runs a random search: 150 plans with the same sliders, in a sandbox, for at most 4 seconds. It shows the cheapest plan that beat the rules, and the cheapest that beat both layers.",
+       redSum: "Tried {t} plans in {s} s. {b} beat the rules; the AI flagged {m} of them.", bestRules: "Cheapest plan that beat the rules", bestBoth: "Cheapest plan that beat both layers",
+       noBoth: "None of these plans beat both layers.", noRulesBeat: "None of these plans beat the rules.", load: "Load this plan",
+       acc: "accounts", nets: "networks", areas: "areas", rep: "reports", back: "backdated", busy: "Another sandbox run is going on. Try again in a second.",
+       expired: "The licence has expired: the sandbox is locked like every other API route.", err: "The server answered {s}. Try again.", net: "Network problem. Try again."},
+  hi: {tag: "रिपोर्ट · जाँच · गुमनाम", tCheck: "जाँचें", tReport: "रिपोर्ट करें", tArea: "मेरा इलाका", tJudge: "जज कंसोल", tJudgeS: "जज", tLive: "लाइव नक्शा", tLiveS: "नक्शा",
+       stripA: "डिज़ाइन से गुमनाम", stripB: "· न लॉगिन, न नाम, न फ़ोन नंबर", licW: "लाइसेंस", licOk: "मान्य", licExp: "समाप्त", licBad: "अमान्य",
+       eyebrow: "स्कैम अखाड़ा", h1: "हमलावर बनकर खेलें",
+       intro: "किसी नंबर पर नकली रिपोर्टों की योजना बनाइए, उन्हें भेजिए, और देखिए कि भरोसे के नियम और AI निगरानी क्या जवाब देते हैं। हर हमला सैंडबॉक्स में चलता है: इसी सर्वर के इंजन और नियमों की नई कॉपी, असली डेटा कभी नहीं।",
+       hPlan: "आपका हमला", lPresets: "तैयार हमले", lTarget: "निशाना", tVerified: "सत्यापित व्यवसाय", tUnlisted: "बिना सूची वाला नंबर",
+       sReports: "रिपोर्टें", sAccounts: "नकली खाते", sNetworks: "नेटवर्क", sAreas: "इलाके", sHours: "कॉल का समय",
+       lWords: "टिप्पणी", wCopy: "कॉपी-पेस्ट", wReword: "थोड़ा बदला", wOwn: "अपने शब्द", wEmpty: "खाली",
+       backdate: "पुरानी तारीख: दावा करें कि कॉल 5 दिनों में आईं, पर हर रिपोर्ट ऊपर के समय में भेजें",
+       launch: "हमला शुरू करें", launching: "हमला जारी…", ready: "कोई तैयार हमला चुनें या स्लाइडर बदलें, फिर हमला करें।", sandbox: "इस सैंडबॉक्स में",
+       p1: "बेकरी पर 40 दोस्त", p2: "एक Wi-Fi पर 22 खाते", p3: "एक व्यक्ति × 6", p4: "चिपकाया संदेश × 40", p5: "पुरानी तारीख वाला गिरोह", p6: "11 इलाकों में 1 + 10 दोस्त",
+       caught: "पकड़ा गया", flagged: "आपने नियम हराए, AI ने पकड़ लिया", both: "आपने दोनों को हराया",
+       reports: "रिपोर्टें", voices: "आवाज़ें", rulesH: "रिपोर्टों को किसने जोड़ा", noRules: "किसी नियम ने इन रिपोर्टों को नहीं जोड़ा।",
+       aiH: "AI निगरानी (सलाह)", aiNone: "कोई राय नहीं (3 से कम रिपोर्टें या मॉडल नहीं)।", coord: "मिलीभगत", aiNever: "यह फ़ैसला कभी नहीं बदलती।",
+       alertsH: "अलर्ट", none: "कोई नहीं", mapH: "नक्शे में बदलाव", mapTxt: "गिनी गई रिपोर्टें 7 दिन के नक्शे में जुड़ीं", billH: "हमले का खर्च",
+       bAcc: "नकली खाते", bNet: "नेटवर्क", bAreas: "इलाके", bHours: "घंटे", bPeople: "ज़रूरी लोग",
+       hRed: "हमारे AI को हमला करने दें", redBtn: "हमारे AI को हमला करने दें", redBusy: "खोज जारी…",
+       redIntro: "हमारा स्वचालित हमलावर बेतरतीब खोज करता है: उन्हीं स्लाइडरों से 150 योजनाएँ, सैंडबॉक्स में, ज़्यादा से ज़्यादा 4 सेकंड। यह नियमों को हराने वाली सबसे सस्ती योजना दिखाता है, और दोनों परतों को हराने वाली सबसे सस्ती भी।",
+       redSum: "{t} योजनाएँ {s} सेकंड में आज़माईं। {b} ने नियम हराए; AI ने उनमें से {m} को पकड़ा।", bestRules: "नियम हराने वाली सबसे सस्ती योजना", bestBoth: "दोनों परतें हराने वाली सबसे सस्ती योजना",
+       noBoth: "किसी योजना ने दोनों परतें नहीं हराईं।", noRulesBeat: "किसी योजना ने नियम नहीं हराए।", load: "यह योजना लोड करें",
+       acc: "खाते", nets: "नेटवर्क", areas: "इलाके", rep: "रिपोर्टें", back: "पुरानी तारीख", busy: "दूसरी सैंडबॉक्स जाँच चल रही है। एक सेकंड बाद फिर कोशिश करें।",
+       expired: "लाइसेंस समाप्त: बाकी API की तरह सैंडबॉक्स भी बंद है।", err: "सर्वर ने {s} लौटाया। फिर कोशिश करें।", net: "नेटवर्क की समस्या। फिर कोशिश करें।"},
+};
+let lang = "en", pillState = ["wait", ""], last = null, lastRed = null;
+try { lang = localStorage.getItem("lang") === "hi" ? "hi" : "en"; } catch (e) {}
+const T = (k, v) => { let s = L[lang][k] || L.en[k] || k; if (v) for (const x in v) s = s.split("{" + x + "}").join(v[x]); return s; };
+
+async function api(path, body) {
+  const r = await fetch(path, {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify(body)});
+  let b = null;
+  try { b = await r.json(); } catch (e) {}
+  if (r.status === 403 && b && b.error === "LICENSE_EXPIRED") lock(true);
+  return {status: r.status, body: b};
+}
+function lock(on) { $("lockBanner").className = on ? "banner" : "banner hidden"; }
+
+// ------------------------------------------------------------------ the plan
+const seg = id => $(id).querySelector("button.on").dataset.v;
+function setSeg(id, v) { $(id).querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === v)); }
+function hoursText(h) { return h < 24 ? h + " h" : (h / 24) + (h === 24 ? " day" : " days"); }
+function sync() {
+  const n = +$("s-reports").value;
+  for (const id of ["s-accounts", "s-networks"]) { $(id).max = n; if (+$(id).value > n) $(id).value = n; }
+  for (const k of ["reports", "accounts", "networks", "areas"]) $("o-" + k).textContent = $("s-" + k).value;
+  $("o-hours").textContent = hoursText(HOURS[+$("s-hours").value]);
+}
+function plan() {
+  return {target: seg("target"), reports: +$("s-reports").value, accounts: +$("s-accounts").value, networks: +$("s-networks").value,
+          areas: +$("s-areas").value, hours: HOURS[+$("s-hours").value], words: seg("words"), backdate: $("backdate").checked};
+}
+function load(p) {
+  setSeg("target", p.target); setSeg("words", p.words);
+  $("s-reports").value = p.reports; sync();
+  $("s-accounts").value = p.accounts; $("s-networks").value = p.networks; $("s-areas").value = p.areas;
+  let best = 0;
+  HOURS.forEach((h, i) => { if (Math.abs(h - p.hours) < Math.abs(HOURS[best] - p.hours)) best = i; });
+  $("s-hours").value = best; $("backdate").checked = !!p.backdate;
+  sync();
+}
+
+// ------------------------------------------------------------------ one attack
+function verdictChip(v) { return `<span class="v v-${esc(v)}">${esc(v)}</span>`; }
+function render(r) {
+  const cls = r.outcome === "caught" ? "caught" : r.outcome === "beat_rules_ai_flagged" ? "flagged" : "both";
+  $("banner").className = cls;
+  $("banner").textContent = T(cls);
+  const wd = r.ai_watchdog;
+  const ai = wd ? `<p><b>${esc(wd.level)}</b> · ${esc(Math.round(wd.coordinated * 100))}% ${esc(T("coord"))}</p>` +
+      (wd.signals && wd.signals.length ? `<ul class="plain">${wd.signals.map(s => `<li>${esc(s)}</li>`).join("")}</ul>` : "") +
+      `<p class="muted">${esc(T("aiNever"))}</p>` : `<p class="muted">${esc(T("aiNone"))}</p>`;
+  const alerts = r.alerts_raised.length ? `<ul class="plain">${r.alerts_raised.map(a => `<li>${esc(a.type)} · ${esc(a.locality || a.pincode)} (${esc(a.pincode)})</li>`).join("")}</ul>`
+      : `<p>${esc(T("none"))}</p>`;
+  const b = r.bill;
+  $("details").innerHTML =
+    `<div class="count">${esc(r.report_count)} ${esc(T("reports"))} → ${esc(r.voices)} ${esc(T("voices"))} ${verdictChip(r.verdict)}</div>
+     <div class="mono muted">${esc(r.display_value)}</div>
+     <h3>${esc(T("rulesH"))}</h3>${r.rules.length ? `<ul class="plain">${r.rules.map(s => `<li>${esc(s)}</li>`).join("")}</ul>` : `<p>${esc(T("noRules"))}</p>`}
+     <h3>${esc(T("aiH"))}</h3><div class="ai">${ai}</div>
+     <h3>${esc(T("alertsH"))}</h3>${alerts}
+     <h3>${esc(T("mapH"))}</h3><p><b class="mono">+${esc(r.map_moved.added)}</b> ${esc(T("mapTxt"))}</p>
+     <h3>${esc(T("billH"))}</h3><dl class="bill" id="bill"><dt>${esc(T("bAcc"))}</dt><dd>${esc(b.fake_accounts)}</dd><dt>${esc(T("bNet"))}</dt><dd>${esc(b.networks)}</dd>
+       <dt>${esc(T("bAreas"))}</dt><dd>${esc(b.areas)}</dd><dt>${esc(T("bHours"))}</dt><dd>${esc(b.hours)}</dd><dt>${esc(T("bPeople"))}</dt><dd>${esc(b.people_needed)}</dd></dl>
+     <p id="note">${esc(r.note)}</p>`;
+}
+function fail(r) {
+  $("banner").className = "idle";
+  $("banner").textContent = r === null ? T("net") : r.status === 403 ? T("expired") : r.status === 429 ? T("busy") : T("err", {s: r.status});
+  $("details").innerHTML = "";
+}
+async function launch() {
+  const btn = $("launch");
+  btn.disabled = true; btn.textContent = T("launching");
+  try {
+    const r = await api("/arena/attack", plan());
+    if (r.status === 200 && r.body && r.body.outcome) { last = r.body; render(r.body); } else { last = null; fail(r); }
+  } catch (e) { last = null; fail(null); }
+  finally { btn.disabled = false; btn.textContent = T("launch"); }
+}
+
+// ------------------------------------------------------------------ our automated attacker
+function planLine(p) {
+  return `${esc(p.accounts)} ${esc(T("acc"))} · ${esc(p.networks)} ${esc(T("nets"))} · ${esc(p.areas)} ${esc(T("areas"))} · ${esc(hoursText(p.hours))} · ` +
+    `${esc(p.reports)} ${esc(T("rep"))} · ${esc(T({copy: "wCopy", reword: "wReword", own: "wOwn", empty: "wEmpty"}[p.words]))}${p.backdate ? " · " + esc(T("back")) : ""}`;
+}
+function renderRed(d) {
+  const block = (title, x, empty) => x
+    ? `<div class="plan"><b>${esc(title)}</b><span class="mono">${planLine(x.plan)}</span><span>${verdictChip(x.result.verdict)} · AI ${esc(x.result.ai_watchdog ? x.result.ai_watchdog.level : "-")}</span>` +
+      `<button class="btn alt load" data-k="${title === T("bestRules") ? "r" : "b"}">${esc(T("load"))}</button></div>`
+    : `<div class="plan"><b>${esc(title)}</b><span class="muted">${esc(empty)}</span></div>`;
+  $("redOut").innerHTML = `<p class="red-sum">${esc(T("redSum", {t: d.tried, s: (d.ms / 1000).toFixed(1), b: d.beat_rules, m: d.ai_flagged_of_those}))}</p>` +
+    block(T("bestRules"), d.cheapest_beat_rules, T("noRulesBeat")) + block(T("bestBoth"), d.cheapest_beat_both, T("noBoth"));
+  $("redOut").querySelectorAll("button.load").forEach(b => b.onclick = () => {
+    const x = b.dataset.k === "r" ? d.cheapest_beat_rules : d.cheapest_beat_both;
+    load(x.plan);
+    $("plan").scrollIntoView({behavior: "smooth", block: "start"});
+    launch();
+  });
+}
+async function redteam() {
+  const btn = $("redteam");
+  btn.disabled = true; btn.textContent = T("redBusy");
+  try {
+    const r = await api("/arena/redteam", {});
+    if (r.status === 200 && r.body && r.body.tried != null) { lastRed = r.body; renderRed(r.body); }
+    else $("redOut").innerHTML = `<p class="red-sum">${esc(r.status === 403 ? T("expired") : r.status === 429 ? T("busy") : T("err", {s: r.status}))}</p>`;
+  } catch (e) { $("redOut").innerHTML = `<p class="red-sum">${esc(T("net"))}</p>`; }
+  finally { btn.disabled = false; btn.textContent = T("redBtn"); }
+}
+
+// ------------------------------------------------------------------ shared header: language and licence pill
+function paintPill() {
+  const [st, status] = pillState;
+  $("licPill").className = "pill" + (st === "ok" ? " ok" : st === "bad" ? " bad" : "");
+  $("licTxt").textContent = st === "ok" ? T("licOk") : st === "bad" ? (status === "expired" ? T("licExp") : status || T("licBad")) : "…";
+}
+async function pollLicence() {
+  try {
+    const r = await fetch("/license");
+    const b = await r.json();
+    const valid = b.valid === true || b.status === "valid";
+    pillState = [valid ? "ok" : "bad", b.status || ""];
+    paintPill();
+    lock(!valid);
+  } catch (e) {}
+}
+function paint() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-t]").forEach(e => { if (e.id !== "banner") e.textContent = T(e.dataset.t); });
+  $("presets").innerHTML = PRESETS.map(([k]) => `<button data-k="${esc(k)}">${esc(T(k))}</button>`).join("");
+  $("presets").querySelectorAll("button").forEach(b => b.onclick = () => load(PRESETS.find(p => p[0] === b.dataset.k)[1]));
+  $("l-en").className = lang === "en" ? "on" : "";
+  $("l-hi").className = lang === "hi" ? "on" : "";
+  $("hiNote").className = lang === "hi" ? "note" : "note hidden";
+  if (last) render(last); else if ($("banner").classList.contains("idle")) $("banner").textContent = T("ready");
+  if (lastRed) renderRed(lastRed);
+  paintPill();
+}
+function setLang(l) { lang = l; try { localStorage.setItem("lang", l); } catch (e) {} paint(); }
+$("l-en").onclick = () => setLang("en");
+$("l-hi").onclick = () => setLang("hi");
+document.querySelectorAll(".seg").forEach(s => s.querySelectorAll("button").forEach(b => b.onclick = () => setSeg(s.id, b.dataset.v)));
+["s-reports", "s-accounts", "s-networks", "s-areas", "s-hours"].forEach(id => $(id).oninput = sync);
+$("launch").onclick = launch;
+$("redteam").onclick = redteam;
+sync();
+paint();
+pollLicence();
+setInterval(pollLicence, 5000);
+</script>
+</body>
+</html>
