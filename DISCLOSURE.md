@@ -28,9 +28,10 @@ or earlier hackathons.
 - qrcodejs 1.0.0, loaded from cdnjs, draws the QR code on the judge console (`/judge`). The page works without it.
 - Leaflet 1.9.4 (BSD-2-Clause), loaded from cdnjs, draws the live scam map (`/live`). Map tiles come from the OpenStreetMap Foundation's tile server (tile.openstreetmap.org, no API key; used under its tile usage policy), with OpenStreetMap data (© OpenStreetMap contributors, ODbL), and are credited on the map. The viewer's browser fetches the tiles; no report data is sent to them. Without them the page falls back to a plain plot of area centres.
 - tweetnacl 1.0.3 (public domain, Unlicense), loaded from cdnjs with a pinned integrity hash, checks signed answers in the "Verify an answer" panel on `/judge`. Without it the panel says NOT CHECKED, and `tools/verify_attestation.py` does the same check. A byte-identical copy is in `tests/e2e/assets` so the browser tests run without a network.
-- No web fonts: the pages use the device's system fonts (Inter where the device already has it). Both pages share one stylesheet, `app/static/theme.css`, written for this project.
+- No web fonts: the pages use the device's system fonts (Inter where the device already has it). All four pages (`/`, `/live`, `/judge`, `/arena`) share one stylesheet, `app/static/theme.css`, written for this project.
 - The map pin in the header is drawn in CSS. No logo, image or asset from any other site or company is used.
 - Icons are Unicode emoji, drawn by the device's own emoji font. No icon pack and no third-party logos.
+- The "Ask family before you pay" button on a Check result is a WhatsApp click-to-chat link (`https://wa.me/?text=...`) with a ready message. WhatsApp opens only when the person taps it, nothing is sent unless they send it, and the server never contacts WhatsApp.
 
 ## Services and images
 
@@ -67,6 +68,6 @@ only, and both advisory: neither sets, raises or lowers a verdict, and neither i
 | Tool | What it helped with |
 |---|---|
 | Claude (claude.ai chat, Anthropic) | Planning, the trust engine and its tests (`app/engine`, `tests/engine`), the judge console sandbox, the AI watchdog (model code, attack simulator, training script), reviews, the security review |
-| Claude Code (Anthropic) | Server, licence, deployment, CI, web app changes, Playwright tests, the on-device message reader and its synthetic messages |
+| Claude Code (Anthropic) | Server, licence, deployment, CI, web app changes, Playwright tests, the on-device message reader and its synthetic messages, signed answers, the Scam Arena |
 | Google Antigravity (with the Claude and Gemini models it offers) | README, Docker files, the demo seed script, the video script |
 | OpenAI Codex | Black-box tests: live attack table, live lookup and privacy checks, input variants |
