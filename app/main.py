@@ -528,6 +528,12 @@ def ai_reader_model():
     return FileResponse(AI_DIR / "reader_model.json", media_type="application/json")
 
 
+@app.get(STATIC_PREFIX + "/ai/robustness.json")
+def ai_reader_robustness():
+    # "Attack our AI" scorecard on /arena, written by tools/ai/robustness.py. Aggregate numbers only.
+    return FileResponse(AI_DIR / "robustness.json", media_type="application/json")
+
+
 @app.get(STATIC_PREFIX + "/ai/shield.js")
 def ai_shield_js():
     # The AI Call Shield's model code. It runs in the browser; no call text ever reaches this server.
