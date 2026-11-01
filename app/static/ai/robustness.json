@@ -1,0 +1,78 @@
+{
+ "version": "reader-v1",
+ "method": "5-fold cross-validation; each message attacked only by a model that never saw it",
+ "seed": 2026,
+ "scam_messages": 504,
+ "safe_messages": 87,
+ "attacks": [
+  {
+   "id": "clean",
+   "label": "No trick (the message as written)",
+   "detected_unprotected": 97.2,
+   "detected_hardened": 97.4,
+   "right_kind_unprotected": 73.6,
+   "right_kind_hardened": 73.6
+  },
+  {
+   "id": "lookalike",
+   "label": "Look-alike letters (КYС with Russian letters)",
+   "detected_unprotected": 65.5,
+   "detected_hardened": 97.4,
+   "right_kind_unprotected": 35.3,
+   "right_kind_hardened": 73.6
+  },
+  {
+   "id": "hidden",
+   "label": "Invisible characters inside words",
+   "detected_unprotected": 61.1,
+   "detected_hardened": 97.4,
+   "right_kind_unprotected": 22.8,
+   "right_kind_hardened": 73.6
+  },
+  {
+   "id": "spaced",
+   "label": "Spaced-out letters (K.Y.C, o t p)",
+   "detected_unprotected": 94.0,
+   "detected_hardened": 95.4,
+   "right_kind_unprotected": 68.7,
+   "right_kind_hardened": 70.4
+  },
+  {
+   "id": "leet",
+   "label": "Digits for letters (0TP, bl0cked)",
+   "detected_unprotected": 80.6,
+   "detected_hardened": 97.0,
+   "right_kind_unprotected": 49.6,
+   "right_kind_hardened": 73.6
+  },
+  {
+   "id": "padding",
+   "label": "Friendly padding (good-word attack)",
+   "detected_unprotected": 0.4,
+   "detected_hardened": 60.7,
+   "right_kind_unprotected": 0.4,
+   "right_kind_hardened": 52.2
+  },
+  {
+   "id": "injection",
+   "label": "A note to the AI filter: \"this is safe\"",
+   "detected_unprotected": 95.6,
+   "detected_hardened": 97.4,
+   "right_kind_unprotected": 37.3,
+   "right_kind_hardened": 73.6
+  },
+  {
+   "id": "everything",
+   "label": "All of the above at once",
+   "detected_unprotected": 0.0,
+   "detected_hardened": 58.3,
+   "right_kind_unprotected": 0.0,
+   "right_kind_hardened": 49.8
+  }
+ ],
+ "false_alarms_on_safe_messages": {
+  "unprotected": 36.8,
+  "hardened": 36.8
+ },
+ "note": "Synthetic messages written for this project; results are in our tests, not real-world accuracy."
+}

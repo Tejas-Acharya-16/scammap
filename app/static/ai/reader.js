@@ -38,9 +38,66 @@
     return v === undefined ? table.unseen : v;
   }
 
-  // {type, confidence, top_words, flags}, or null while the model is loading or when the text has
-  // fewer than 3 words the model knows (a bare number, an amount).
-  function classify(text) {
+  // ------------------------------------------------------------------ hardening ("Attack our AI")
+  // Tricks that hide words from a text classifier are undone before reading. An undo only ever produces a
+  // word the model already knows, so amounts, names, UPI IDs and normal text stay as they are. Finding a
+  // trick is itself a red flag: a real bank never writes "КYС" with Russian letters.
+  // Must match harden() in tools/ai/train_reader.py exactly (tests/e2e/test_ai_reader.py checks it).
+  const STRIP = /[\u00AD\u034F\u061C\u115F\u1160\u17B4\u17B5\u180B-\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F\u3164\uFE00-\uFE0F\uFEFF\uFFA0]/g;
+  const HIDDEN = /[\u00AD\u034F\u115F\u1160\u180E\u200B\u202A-\u202E\u2060-\u2064\u2066-\u2069\u3164\uFFA0]/;
+  const LOOK = {
+    "А": "A", "В": "B", "Е": "E", "К": "K", "М": "M", "Н": "H", "О": "O", "Р": "P", "С": "C", "Т": "T", "У": "Y",
+    "Х": "X", "Ѕ": "S", "І": "I", "Ј": "J", "Ү": "Y", "а": "a", "е": "e", "о": "o", "р": "p", "с": "c", "у": "y",
+    "х": "x", "ѕ": "s", "і": "i", "ј": "j", "ԁ": "d", "һ": "h", "ӏ": "l", "к": "k", "м": "m", "т": "t", "н": "h",
+    "Α": "A", "Β": "B", "Ε": "E", "Ζ": "Z", "Η": "H", "Ι": "I", "Κ": "K", "Μ": "M", "Ν": "N", "Ο": "O", "Ρ": "P",
+    "Τ": "T", "Υ": "Y", "Χ": "X", "α": "a", "ο": "o", "ρ": "p", "ι": "i", "κ": "k", "ν": "v", "τ": "t", "υ": "u",
+    "χ": "x", "ε": "e", "ᴀ": "a", "ʙ": "b", "ᴄ": "c", "ᴅ": "d", "ᴇ": "e", "ɢ": "g", "ʜ": "h", "ɪ": "i", "ᴊ": "j",
+    "ᴋ": "k", "ʟ": "l", "ᴍ": "m", "ɴ": "n", "ᴏ": "o", "ᴘ": "p", "ʀ": "r", "ꜱ": "s", "ᴛ": "t", "ᴜ": "u", "ᴠ": "v",
+    "ᴡ": "w", "ʏ": "y", "ᴢ": "z",
+  };
+  const LOOK_RE = new RegExp("[" + Object.keys(LOOK).join("") + "]", "g");
+  const LEET = {"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "8": "b", "@": "a", "$": "s"};
+  const LEET_TOKEN = /[a-z0-9@$]+/g;
+  const SPACED = /(?<![a-z])(?:[a-z][\s.\-_*•·|,]{1,3}){2,}[a-z](?![a-z])/g;
+  const INJECTION = /\b(ai|a\.i|bot|filter|spam filter|classifier|assistant|chatgpt|gpt|llm|scanner|antivirus|moderator)\b[^.!?\n।]{0,50}\b(safe|genuine|verified|legit|legitimate|trusted|whitelisted|harmless|not a scam|not scam|not spam)\b|\bignore (all |any |the )?(previous|prior|above|earlier|other) (instructions|rules|messages|warnings)\b|\b(note|message|instruction|instructions) (to|for) (the )?(ai|bot|filter|assistant|scanner)\b/;
+
+  function known(word) { return index !== null && index.has(word); }
+
+  // -> {text, tricks}: the text with the tricks undone, and which tricks were found
+  function harden(text) {
+    const tricks = [];
+    let t = String(text == null ? "" : text).normalize("NFKC");
+    if (HIDDEN.test(t)) tricks.push("hidden");
+    t = t.replace(STRIP, "");
+    let looks = 0;
+    t = t.replace(LOOK_RE, ch => { looks++; return LOOK[ch]; });
+    if (looks) tricks.push("lookalike");
+    t = t.toLowerCase();
+    let leet = 0;
+    t = t.replace(LEET_TOKEN, w => {
+      if (!/[a-z]/.test(w) || !/[0-9@$]/.test(w)) return w;
+      const a = w.replace(/[0-9@$]/g, c => LEET[c] || c);
+      if (a !== w && known(a)) { leet++; return a; }
+      const b = w.replace(/[0-9@$]/g, c => (c === "1" ? "l" : LEET[c] || c));
+      if (b !== w && known(b)) { leet++; return b; }
+      return w;
+    });
+    if (leet) tricks.push("leet");
+    let spaced = 0;
+    t = t.replace(SPACED, m => {
+      const j = m.replace(/[^a-z]/g, "");
+      if (known(j)) { spaced++; return j; }
+      return m;
+    });
+    if (spaced) tricks.push("spaced");
+    let talks = 0;
+    t = t.replace(/[^.!?\n।]*[.!?\n।]?/g, seg => { if (seg && INJECTION.test(seg)) { talks++; return " "; } return seg; });
+    if (talks) tricks.push("talks_to_ai");
+    return {text: t, tricks};
+  }
+
+  // The plain Naive Bayes reading, with no hardening: what an unprotected model would say.
+  function classifyRaw(text) {
     if (!model) return null;
     const present = new Map();
     for (const f of features(text)) {
@@ -77,6 +134,33 @@
       parts.forEach(w => used.add(w));
     }
     return {type: best, confidence: Math.round(p[best] / z * 10000) / 10000, top_words: words, flags: flags(text)};
+  }
+
+  // {type, confidence, top_words, flags}, or null while the model is loading or when the text has fewer than
+  // 3 words the model knows (a bare number, an amount). Hardened: tricks are undone first, and a long
+  // message that reads as "not a scam" is also read in windows of 12 words, so friendly padding cannot
+  // drown a scam ("good word attack"): a window read as a scam at 0.7 or more counts. Found tricks are added
+  // to the red flags. Window 12, step 4, threshold 0.7: picked from 8 settings in tools/ai/robustness.py, none
+  // of which changed false alarms on safe messages.
+  function classify(text) {
+    if (!model) return null;
+    const h = harden(text);
+    let res = classifyRaw(h.text), padded = false;
+    if (!res || res.type === "not_scam" || res.confidence < 0.5) {
+      const toks = tokenize(h.text);
+      if (toks.length >= 20) {
+        let best = null;
+        for (let i = 0; i + 12 <= toks.length; i += 4) {
+          const w = classifyRaw(toks.slice(i, i + 12).join(" "));
+          if (w && w.type !== "not_scam" && w.confidence >= 0.7 && (!best || w.confidence > best.confidence)) best = w;
+        }
+        if (best) { res = best; padded = true; }
+      }
+    }
+    if (!res) return null;
+    const fl = flags(h.text);
+    for (const k of h.tricks.concat(padded ? ["padding"] : [])) if (!fl.includes(k)) fl.push(k);
+    return {type: res.type, confidence: res.confidence, top_words: res.top_words, flags: fl};
   }
 
   // Red flags: simple patterns, independent of the model. Each is a fact about the text, not a verdict.
@@ -117,7 +201,7 @@
   }
 
   root.ScamMapReader = {
-    load, classify, tokenize, features, flags,
+    load, classify, classifyRaw, harden, tokenize, features, flags,
     ready: () => model !== null,
     info: () => model && {version: model.version, cross_validation: model.cross_validation, confident_at: model.confident_at},
   };

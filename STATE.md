@@ -37,6 +37,10 @@ Live: https://scammap-yp1k.onrender.com (app at `/`, judge console at `/judge`).
 
 - `/shield` and "AI Shield" in the menu on every page. Type what a caller says; the AI on the phone names the scam script (digital arrest, bank KYC and OTP, task job, UPI refund), the step, and what they will ask for next. Naive Bayes plus a hidden Markov model, in the browser, with no LLM; nothing typed is sent. Judge console card at the top. On our synthetic data: 92.8% of lines on the right step (5-fold); held-out calls 12 of 12 (see the README for the one fix). Tests: 9 unit and 6 Playwright. Full suite: 426 passed and 2 xfailed, browser 54 passed, node 3 passed.
 
+## Attack our AI (08:30, branch `ai-lab`)
+
+- The message reader is hardened against hidden-word tricks (look-alike letters, invisible characters, spaced letters, digits for letters, friendly padding, notes to the AI) and flags them. Scorecard by 5-fold cross-validation in `app/static/ai/robustness.json`; demo under "Attack our AI" on `/arena`. Tests: all but browser 435 passed, 2 xfailed; browser 57 passed; Node 3 passed (Claude, 1 Nov 08:29 to 08:33).
+
 ## Open issues
 
 1. Stored XSS in how a reported link is shown: fixed and merged; the 4 browser tests in `tests/e2e/test_xss_playwright.py` pass.

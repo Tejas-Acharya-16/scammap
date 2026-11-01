@@ -94,8 +94,122 @@ def softmax(s: dict, temperature: float) -> dict:
     return {c: v / z for c, v in e.items()}
 
 
+# ------------------------------------------------------------------ hardening ("Attack our AI")
+# Tricks that hide words from a text classifier, undone before reading. An undo only ever produces a word the
+# model already knows. Must match harden() in app/static/ai/reader.js exactly (tests/e2e/test_ai_reader.py).
+STRIP = re.compile("[\u00AD\u034F\u061C\u115F\u1160\u17B4\u17B5\u180B-\u180E\u200B-\u200F\u202A-\u202E"
+                   "\u2060-\u2064\u2066-\u206F\u3164\uFE00-\uFE0F\uFEFF\uFFA0]")
+HIDDEN = re.compile("[\u00AD\u034F\u115F\u1160\u180E\u200B\u202A-\u202E\u2060-\u2064\u2066-\u2069\u3164\uFFA0]")
+LOOK = {
+    "А": "A", "В": "B", "Е": "E", "К": "K", "М": "M", "Н": "H", "О": "O", "Р": "P", "С": "C", "Т": "T", "У": "Y",
+    "Х": "X", "Ѕ": "S", "І": "I", "Ј": "J", "Ү": "Y", "а": "a", "е": "e", "о": "o", "р": "p", "с": "c", "у": "y",
+    "х": "x", "ѕ": "s", "і": "i", "ј": "j", "ԁ": "d", "һ": "h", "ӏ": "l", "к": "k", "м": "m", "т": "t", "н": "h",
+    "Α": "A", "Β": "B", "Ε": "E", "Ζ": "Z", "Η": "H", "Ι": "I", "Κ": "K", "Μ": "M", "Ν": "N", "Ο": "O", "Ρ": "P",
+    "Τ": "T", "Υ": "Y", "Χ": "X", "α": "a", "ο": "o", "ρ": "p", "ι": "i", "κ": "k", "ν": "v", "τ": "t", "υ": "u",
+    "χ": "x", "ε": "e", "ᴀ": "a", "ʙ": "b", "ᴄ": "c", "ᴅ": "d", "ᴇ": "e", "ɢ": "g", "ʜ": "h", "ɪ": "i", "ᴊ": "j",
+    "ᴋ": "k", "ʟ": "l", "ᴍ": "m", "ɴ": "n", "ᴏ": "o", "ᴘ": "p", "ʀ": "r", "ꜱ": "s", "ᴛ": "t", "ᴜ": "u", "ᴠ": "v",
+    "ᴡ": "w", "ʏ": "y", "ᴢ": "z",
+}
+LOOK_RE = re.compile("[" + "".join(LOOK) + "]")
+LEET = {"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "8": "b", "@": "a", "$": "s"}
+LEET_TOKEN = re.compile("[a-z0-9@$]+")
+SPACED = re.compile("(?<![a-z])(?:[a-z][\\s.\\-_*•·|,]{1,3}){2,}[a-z](?![a-z])", re.ASCII)
+INJECTION = re.compile(
+    r"\b(ai|a\.i|bot|filter|spam filter|classifier|assistant|chatgpt|gpt|llm|scanner|antivirus|moderator)\b"
+    r"[^.!?\n।]{0,50}\b(safe|genuine|verified|legit|legitimate|trusted|whitelisted|harmless|not a scam|not scam|not spam)\b"
+    r"|\bignore (all |any |the )?(previous|prior|above|earlier|other) (instructions|rules|messages|warnings)\b"
+    r"|\b(note|message|instruction|instructions) (to|for) (the )?(ai|bot|filter|assistant|scanner)\b", re.ASCII)
+
+
+def harden(model: dict, text: str) -> tuple[str, list[str]]:
+    """(text with the tricks undone, the tricks found), as reader.js harden() does."""
+    vocab = _unigrams(model)
+    tricks = []
+    t = unicodedata.normalize("NFKC", str(text))
+    if HIDDEN.search(t):
+        tricks.append("hidden")
+    t = STRIP.sub("", t)
+    looks = [0]
+
+    def look(m):
+        looks[0] += 1
+        return LOOK[m.group(0)]
+    t = LOOK_RE.sub(look, t)
+    if looks[0]:
+        tricks.append("lookalike")
+    t = t.lower()
+    leet = [0]
+
+    def unleet(m):
+        w = m.group(0)
+        if not re.search("[a-z]", w) or not re.search("[0-9@$]", w):
+            return w
+        a = re.sub("[0-9@$]", lambda c: LEET.get(c.group(0), c.group(0)), w)
+        if a != w and a in vocab:
+            leet[0] += 1
+            return a
+        b = re.sub("[0-9@$]", lambda c: "l" if c.group(0) == "1" else LEET.get(c.group(0), c.group(0)), w)
+        if b != w and b in vocab:
+            leet[0] += 1
+            return b
+        return w
+    t = LEET_TOKEN.sub(unleet, t)
+    if leet[0]:
+        tricks.append("leet")
+    spaced = [0]
+
+    def unspace(m):
+        j = re.sub("[^a-z]", "", m.group(0))
+        if j in vocab:
+            spaced[0] += 1
+            return j
+        return m.group(0)
+    t = SPACED.sub(unspace, t)
+    if spaced[0]:
+        tricks.append("spaced")
+    talks = [0]
+
+    def drop(m):
+        seg = m.group(0)
+        if seg and INJECTION.search(seg):
+            talks[0] += 1
+            return " "
+        return seg
+    t = re.sub("[^.!?\n।]*[.!?\n।]?", drop, t)
+    if talks[0]:
+        tricks.append("talks_to_ai")
+    return t, tricks
+
+
+def _unigrams(model: dict, _cache={}) -> set:
+    if _cache.get("key") != id(model):
+        _cache.update(key=id(model), words={f for f in model["vocabulary"] if " " not in f})
+    return _cache["words"]
+
+
 def classify(model: dict, text: str) -> dict | None:
-    """{type, confidence, top_words}; None when the text has fewer than 3 known words."""
+    """Hardened reading, as reader.js classify(): tricks undone first; a long message that reads as not a scam
+    is also read in windows of 12 words (stride 4) so padding cannot drown a scam. {type, confidence, top_words,
+    tricks}; None when the text has fewer than 3 known words."""
+    hard, tricks = harden(model, text)
+    res, padded = classify_raw(model, hard), False
+    if res is None or res["type"] == "not_scam" or res["confidence"] < 0.5:
+        toks = tokenize(hard)
+        if len(toks) >= 20:
+            best = None
+            for i in range(0, len(toks) - 12 + 1, 4):
+                w = classify_raw(model, " ".join(toks[i:i + 12]))
+                if w and w["type"] != "not_scam" and w["confidence"] >= 0.7 and (best is None or w["confidence"] > best["confidence"]):
+                    best = w
+            if best:
+                res, padded = best, True
+    if res is None:
+        return None
+    return {**res, "tricks": tricks + (["padding"] if padded else [])}
+
+
+def classify_raw(model: dict, text: str) -> dict | None:
+    """{type, confidence, top_words}; None when the text has fewer than 3 known words. No hardening."""
     s, present = scores(model, text)
     if sum(present.values()) < 3:
         return None
