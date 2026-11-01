@@ -10,7 +10,7 @@
 | <https://scammap-yp1k.onrender.com/live> | **Live scam map**: 7-day areas, top scams, alerts. Fake campaigns never move it. |
 | <https://scammap-yp1k.onrender.com/shield> | **AI Call Shield** (press "Play a demo call") and **Attack our AI** (tap a trick, watch a plain model fail next to ours). |
 | <https://scammap-yp1k.onrender.com/arena> | **Scam Arena**: play the attacker against our rules, or let our AI attacker try 150 plans. Sandbox only. |
-| `/receipt` | **Signed Scam Receipt**: opened from a Check result; GENUINE or TAMPERED, checked on your own phone. |
+| [https://scammap-yp1k.onrender.com/receipt](https://scammap-yp1k.onrender.com/receipt#r=eyJhIjp7InYiOjEsImtleV9pZCI6IjE2ZWI1ODNlIiwiaXNzdWVkX2F0IjoiMjAyNi0xMS0wMVQxMDozMDoxMCswNTozMCIsInR5cGUiOiJwaG9uZSIsInZhbHVlX3NoYTI1NiI6IjZjNjkzMDM5OWE4M2RiNzVlZmYyNjcyYzViOTIwNWYzMWRhMDhkOGI0YTE1YjY3M2EzNmYxMzNjNTc5NWRkNWIiLCJ2ZXJkaWN0IjoiS05PV05fU0NBTSIsInZvaWNlcyI6NSwicmVwb3J0X2NvdW50Ijo1LCJjb25maWciOiJkN2EyM2I0YyIsInNpZyI6Ik4zSTlYVHMydUZsd3NCajd0VVlGR3ZuR2IyRjlyTXIxb0MyZHQwRUxWUFVmbFJwSDVGb1owa0twby9VdE5YTXdxWWcxR2ZLQWl4ZFBrc1dtSjkydUJ3PT0ifSwidiI6Iis5MTkwMDAwMjY0MzMifQ) | **Signed Scam Receipt**: a sample the live server signed on 1 Nov (Known scam, 5 people). It shows GENUINE; press "Try to fake it" and it turns TAMPERED. Make your own from any Check result. |
 
 ## Architecture in one picture
 
@@ -490,6 +490,8 @@ Limits:
 **Proves what ScamMap said and when. It does not prove the number is a scam.**
 
 After a Check, the result card shows a **Signed receipt** link (हस्ताक्षरित रसीद). It opens `/receipt#r=…` in a new tab, a page a person can show their bank:
+
+Try one: [a sample receipt the live server signed on 1 Nov 2026 at 10:30 IST](https://scammap-yp1k.onrender.com/receipt#r=eyJhIjp7InYiOjEsImtleV9pZCI6IjE2ZWI1ODNlIiwiaXNzdWVkX2F0IjoiMjAyNi0xMS0wMVQxMDozMDoxMCswNTozMCIsInR5cGUiOiJwaG9uZSIsInZhbHVlX3NoYTI1NiI6IjZjNjkzMDM5OWE4M2RiNzVlZmYyNjcyYzViOTIwNWYzMWRhMDhkOGI0YTE1YjY3M2EzNmYxMzNjNTc5NWRkNWIiLCJ2ZXJkaWN0IjoiS05PV05fU0NBTSIsInZvaWNlcyI6NSwicmVwb3J0X2NvdW50Ijo1LCJjb25maWciOiJkN2EyM2I0YyIsInNpZyI6Ik4zSTlYVHMydUZsd3NCajd0VVlGR3ZuR2IyRjlyTXIxb0MyZHQwRUxWUFVmbFJwSDVGb1owa0twby9VdE5YTXdxWWcxR2ZLQWl4ZFBrc1dtSjkydUJ3PT0ifSwidiI6Iis5MTkwMDAwMjY0MzMifQ) (a synthetic number, Known scam, 5 people).
 
 - The receipt is the lookup's `attestation` (plus the value itself, but only when the app already shows it in full: KNOWN_SCAM or VERIFIED_BUSINESS), base64url-encoded in the URL **fragment**. Browsers never send the fragment to a server, so opening a receipt tells our server nothing about which number it is for.
 - The page rebuilds the signed bytes exactly as the judge console does (every field but `sig`, sorted keys, no spaces) and checks them with tweetnacl 1.0.3 (pinned with its integrity hash) against this server's key. If the value is included, it checks `sha256(value) == value_sha256`. It then shows **GENUINE** or **TAMPERED**, the verdict, "reported by N independent people", the report count, when it was issued (IST), whether the number matches, and the key id.
