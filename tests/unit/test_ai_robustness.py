@@ -70,3 +70,24 @@ def test_hardening_leaves_amounts_upi_ids_numbers_and_clean_messages_alone():
     for row in HELDOUT:
         raw, hard = tr.classify_raw(MODEL, row["text"]), tr.classify(MODEL, row["text"])
         assert hard["tricks"] == [] and {k: hard[k] for k in raw} == raw, row
+
+
+def test_the_widget_script_is_served_when_the_licence_has_expired_and_sends_no_text(tmp_path, monkeypatch):
+    import re
+    from fastapi.testclient import TestClient
+    import app.main as main
+    js = (ROOT / "app" / "static" / "ai" / "attack.js").read_text(encoding="utf-8")
+    assert re.findall(r"fetch\(([^,)]*)", js) == ['"/static/ai/robustness.json"']      # its only request
+    for banned in ("XMLHttpRequest", "sendBeacon", "WebSocket", "EventSource", "localStorage"):
+        assert banned not in js, banned
+    assert not re.search(r"scammer|fraud", js, re.I)
+    for page in ("shield.html", "arena.html"):
+        html = (ROOT / "app" / "static" / page).read_text(encoding="utf-8")
+        assert '<script src="/static/ai/attack.js"></script>' in html and 'id="aiatk"' in html, page
+    monkeypatch.setenv("DATABASE_URL", "sqlite:///" + (tmp_path / "t.db").as_posix())
+    with TestClient(main.app) as c:
+        lic = json.loads((ROOT / "licenses" / "expired.json").read_text(encoding="utf-8"))
+        assert c.post("/license", json=lic).status_code == 200
+        r = c.get("/static/ai/attack.js")
+        assert r.status_code == 200 and r.headers["content-type"].startswith("application/javascript")
+        assert c.get("/static/ai/robustness.json").json() == json.loads(SCORE.read_text(encoding="utf-8"))

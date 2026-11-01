@@ -275,7 +275,7 @@ Limits:
 
 ### Attack our AI: tricks that hide words, undone and turned into red flags
 
-Scam messages already hide their words from filters: КYС with Russian letters, 0TP with a zero, invisible characters inside words, K.Y.C, or a scam buried in friendly chat. Filters that count words are known to fall for the last one (the "good word attack", also called Bayesian poisoning). So we attacked our own reader, then hardened it. Try it on `/arena`, under **Attack our AI**: tap a trick and watch a plain model next to ours.
+Scam messages already hide their words from filters: КYС with Russian letters, 0TP with a zero, invisible characters inside words, K.Y.C, or a scam buried in friendly chat. Filters that count words are known to fall for the last one (the "good word attack", also called Bayesian poisoning). So we attacked our own reader, then hardened it. Try it on the **AI Shield** page (`/shield`, in the menu; the header links down to it) or on `/arena`, under **Attack our AI**: tap a trick and watch a plain model next to ours. Both pages use the same widget, `app/static/ai/attack.js`.
 
 What the hardened reader does before it reads (`harden()` in `app/static/ai/reader.js`, the same in `tools/ai/train_reader.py`; a browser test checks they agree on every trick):
 - **Undo the tricks:** compatibility forms (NFKC), invisible and direction characters removed, Cyrillic, Greek and small-capital look-alikes mapped back, digits and symbols swapped back (0→o, 4→a, @→a, ...), spaced or dotted letters joined. An undo is kept only when it gives a word the model already knows, so amounts, phone numbers, UPI IDs and normal text are untouched.
@@ -499,10 +499,10 @@ All results below are from our own synthetic data and generators. They are not f
 # Engine tests (283 passed, 2 known limits)
 python -m pytest tests/engine -q
 
-# Everything except the browser tests (435 passed, 2 known limits)
+# Everything except the browser tests (436 passed, 2 known limits)
 python -m pytest tests -q --ignore=tests/e2e
 
-# Browser tests, phone and laptop size (57 passed; first run: python -m playwright install chromium)
+# Browser tests, phone and laptop size (58 passed; first run: python -m playwright install chromium)
 python -m pytest tests/e2e -q
 
 # Paste-anything: the extractor and a phone flow (Node 22, uses the Python Playwright above; 3 passed)
