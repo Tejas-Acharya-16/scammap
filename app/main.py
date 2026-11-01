@@ -528,6 +528,12 @@ def ai_reader_model():
     return FileResponse(AI_DIR / "reader_model.json", media_type="application/json")
 
 
+@app.get(STATIC_PREFIX + "/ai/attack.js")
+def ai_attack_js():
+    # "Attack our AI" widget on /shield and /arena. Runs in the browser; the text it reads is never sent.
+    return FileResponse(AI_DIR / "attack.js", media_type="application/javascript")
+
+
 @app.get(STATIC_PREFIX + "/ai/robustness.json")
 def ai_reader_robustness():
     # "Attack our AI" scorecard on /arena, written by tools/ai/robustness.py. Aggregate numbers only.

@@ -41,6 +41,10 @@ Live: https://scammap-yp1k.onrender.com (app at `/`, judge console at `/judge`).
 
 - The message reader is hardened against hidden-word tricks (look-alike letters, invisible characters, spaced letters, digits for letters, friendly padding, notes to the AI) and flags them. Scorecard by 5-fold cross-validation in `app/static/ai/robustness.json`; demo under "Attack our AI" on `/arena`. Tests: all but browser 435 passed, 2 xfailed; browser 57 passed; Node 3 passed (Claude, 1 Nov 08:29 to 08:33).
 
+## Attack our AI on the AI Shield page (08:52, branch `ai-lab-site`)
+
+- The widget moved into `app/static/ai/attack.js` and now sits on `/shield` (in the menu, with a link from its header) as well as `/arena`. Its class names start with `atk-` so the site's shared styles (such as `.verdict`) cannot clash. Tests: all but browser 436 passed, 2 xfailed; browser 58 passed (Claude, 1 Nov 08:48 to 08:52).
+
 ## Open issues
 
 1. Stored XSS in how a reported link is shown: fixed and merged; the 4 browser tests in `tests/e2e/test_xss_playwright.py` pass.

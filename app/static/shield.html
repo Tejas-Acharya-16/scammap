@@ -17,6 +17,7 @@ p{margin:6px 0}
 .hero>p{max-width:860px;color:var(--ink-2)}
 .badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
 .badges .tag{font-size:11.5px;padding:3px 9px}
+.tryatk{margin:12px 0 0;font-weight:650}.tryatk a{color:var(--accent-text)}
 .note{background:var(--amber-soft);border:1px solid var(--amber-line);border-radius:12px;padding:10px 12px;font-size:13px;margin-top:8px}
 .grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
 @media (min-width:900px){main{padding:28px 24px 64px}.hero{padding:28px 30px}.hero h1{font-size:40px}.grid{grid-template-columns:minmax(0,1fr) minmax(0,1.05fr)}}
@@ -86,6 +87,7 @@ ol.steps li.next{border-style:dashed;border-color:var(--gold);color:var(--night-
     <h1><span data-t="h1a">Scam calls follow a script.</span> <em data-t="h1b">Our AI knows it.</em></h1>
     <p data-t="intro">On a call that feels wrong? Type what the caller says, line by line. The AI on this phone works out which scam script it is, which step you are on, and what they will ask for next, before they ask.</p>
     <div class="badges"><span class="tag" data-t="b1">AI on this phone</span><span class="tag" data-t="b2">Nothing you type is sent</span><span class="tag" data-t="b3">No LLM</span><span class="tag" data-t="b4">English, हिन्दी, Hinglish</span><span class="tag idle" data-t="b5">AI suggestion, can be wrong</span></div>
+    <p class="tryatk"><a href="#aiatk" data-t="tryAtk">Can our AI be fooled? Attack it below</a></p>
     <p id="hiNote" class="note hidden" lang="hi">AI की बातें और सलाह हिन्दी में हैं; डेमो कॉल अंग्रेज़ी, हिंग्लिश और हिन्दी में हैं।</p>
   </section>
   <div class="grid">
@@ -117,9 +119,11 @@ ol.steps li.next{border-style:dashed;border-color:var(--gold);color:var(--night-
     </ul>
     <p id="stats" class="muted"></p>
   </section>
+  <section class="card" id="aiatk"></section>
 </main>
 <script src="/static/ai/reader.js"></script>
 <script src="/static/ai/shield.js"></script>
+<script src="/static/ai/attack.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
@@ -156,7 +160,7 @@ const L = {
        danger: ["Be careful", "Warning", "High risk", "High risk", "Stop now"], call: "Call 1930 (cyber crime helpline)", family: "Ask family now", report: "Report the number",
        foot: "AI suggestion, can be wrong. It reads only what you type here, on this phone, and sends nothing. Trained on our own synthetic call scripts, not real calls.",
        famMsg: "I am on a call that looks like the \"{s}\" scam (step {k}: {t}). Please call me right now, before I do anything.",
-       hHow: "How it works",
+       hHow: "How it works", tryAtk: "Can our AI be fooled? Attack it below",
        how1: "Scam calls follow scripts in fixed steps. We wrote 4 of them down: digital arrest, bank KYC and OTP, task jobs and UPI refunds, 5 steps each.",
        how2: "A Naive Bayes model reads each line you add and scores every step. A hidden Markov model then follows the call forward through the script, so one unclear line does not throw it off, and it can say which step usually comes next.",
        how3: "Both run in this browser. The model file is downloaded once; what you type is never sent anywhere. No LLM, no outside service.",
@@ -174,7 +178,7 @@ const L = {
        danger: ["सावधान", "चेतावनी", "ख़तरा", "ख़तरा", "अभी रुकिए"], call: "1930 पर कॉल करें (साइबर क्राइम हेल्पलाइन)", family: "अभी परिवार से पूछें", report: "नंबर की रिपोर्ट करें",
        foot: "AI का सुझाव, गलत हो सकता है। यह सिर्फ़ यहाँ लिखी बातें इसी फ़ोन पर पढ़ता है और कुछ नहीं भेजता। हमारी अपनी बनाई (सिंथेटिक) स्क्रिप्ट पर सिखाया गया, असली कॉल पर नहीं।",
        famMsg: "मैं एक कॉल पर हूँ जो \"{s}\" ठगी जैसी लग रही है (कदम {k}: {t})। कुछ भी करने से पहले मुझे अभी कॉल कीजिए।",
-       hHow: "यह कैसे काम करता है",
+       hHow: "यह कैसे काम करता है", tryAtk: "क्या हमारे AI को धोखा दिया जा सकता है? नीचे उस पर हमला करें",
        how1: "ठगी की कॉल तय कदमों वाली स्क्रिप्ट से चलती हैं। हमने 4 स्क्रिप्ट लिखीं: डिजिटल अरेस्ट, बैंक KYC और OTP, टास्क जॉब और UPI रिफंड, हर एक में 5 कदम।",
        how2: "Naive Bayes मॉडल आपकी हर लाइन पढ़कर हर कदम का अंक देता है। फिर hidden Markov मॉडल कॉल को स्क्रिप्ट में आगे-आगे फ़ॉलो करता है, ताकि एक अस्पष्ट लाइन से गड़बड़ न हो, और बता सके कि आगे आमतौर पर कौन-सा कदम आता है।",
        how3: "दोनों इसी ब्राउज़र में चलते हैं। मॉडल फ़ाइल एक बार डाउनलोड होती है; आपका लिखा कहीं नहीं भेजा जाता। कोई LLM नहीं, कोई बाहरी सेवा नहीं।",
@@ -289,9 +293,12 @@ function paint() {
                                          c: h.script_right, d: h.step_right, e: h.next_right, t: h.calls});
   }
   render();
+  if (window.ScamMapAttack) ScamMapAttack.paint();
   paintPill();
 }
 function setLang(l) { lang = l; try { localStorage.setItem("lang", l); } catch (e) {} paint(); }
+// "Attack our AI": the shared widget in /static/ai/attack.js. It reads with /static/ai/reader.js on this phone.
+if (window.ScamMapAttack) ScamMapAttack.mount($("aiatk"), () => lang);
 $("l-en").onclick = () => setLang("en");
 $("l-hi").onclick = () => setLang("hi");
 $("demos").querySelectorAll("button").forEach(b => b.onclick = () => playDemo(b.dataset.demo, 1300));

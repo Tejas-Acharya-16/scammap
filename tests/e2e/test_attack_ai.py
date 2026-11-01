@@ -44,16 +44,16 @@ def test_attack_our_ai_on_a_phone(base_url, new_page):
     page = open_arena(new_page, base_url)
     page.wait_for_selector("#score table")
     assert page.locator("#score tbody tr").count() == 8
-    assert "caught" in page.locator("#atkHard .read").get_attribute("class")
+    assert "caught" in page.locator("#atkHard .atk-read").get_attribute("class")
     page.locator('#tricks button[data-k="lookalike"]').click()
-    assert "fooled" in page.locator("#atkRaw .read").get_attribute("class")
-    assert "caught" in page.locator("#atkHard .read").get_attribute("class")
-    assert page.locator('#atkHard .chips [data-flag="lookalike"]').count() == 1
+    assert "fooled" in page.locator("#atkRaw .atk-read").get_attribute("class")
+    assert "caught" in page.locator("#atkHard .atk-read").get_attribute("class")
+    assert page.locator('#atkHard .atk-chips [data-flag="lookalike"]').count() == 1
     assert "fooled" in page.locator("#atkVerdict").inner_text()
     page.locator('#tricks button[data-k="reset"]').click()
     page.locator('#tricks button[data-k="padding"]').click()
-    assert page.locator("#atkRaw .read").inner_text() == "Not a scam"
-    assert page.locator('#atkHard .chips [data-flag="padding"]').count() == 1
+    assert page.locator("#atkRaw .atk-read").inner_text() == "Not a scam"
+    assert page.locator('#atkHard .atk-chips [data-flag="padding"]').count() == 1
     wide = page.evaluate("() => document.documentElement.scrollWidth - document.documentElement.clientWidth")
     assert wide <= 0, f"page is {wide}px too wide"
     page.locator("#l-hi").click()
@@ -75,3 +75,20 @@ def test_attack_our_ai_sends_nothing(base_url, new_page):
     later = [x for x in log[loaded:] if "/license" not in x[0]]
     assert later == [], later
     assert not [x for x in log if "otp" in (x[0] + x[1]).lower() or "officer" in (x[0] + x[1]).lower()], log
+
+
+def test_attack_our_ai_on_the_ai_shield_page(base_url, new_page):
+    page = new_page()
+    page.goto(base_url + "/shield")
+    page.wait_for_function("() => window.ScamMapReader && ScamMapReader.ready()", timeout=10000)
+    page.wait_for_selector("#aiatk #score table")
+    assert page.locator('a[href="#aiatk"]').count() == 1                       # the header points to it
+    page.locator('#tricks button[data-k="lookalike"]').click()
+    assert "fooled" in page.locator("#atkRaw .atk-read").get_attribute("class")
+    assert "caught" in page.locator("#atkHard .atk-read").get_attribute("class")
+    page.locator('#tricks button[data-k="padding"]').click()
+    assert page.locator('#atkHard .atk-chips [data-flag="padding"]').count() == 1
+    wide = page.evaluate("() => document.documentElement.scrollWidth - document.documentElement.clientWidth")
+    assert wide <= 0, f"page is {wide}px too wide"
+    page.locator("#l-hi").click()
+    assert "हमारे AI पर हमला करें" in page.locator("#aiatk h2").inner_text()
